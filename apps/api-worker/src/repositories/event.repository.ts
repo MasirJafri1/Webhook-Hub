@@ -1,4 +1,4 @@
-import { and, eq, lte, or } from "drizzle-orm";
+import { and, eq, lte, or, sql } from "drizzle-orm";
 import { events } from "../db/schema";
 
 export class EventRepository {
@@ -73,6 +73,22 @@ export class EventRepository {
       .from(events)
       .where(eq(events.idempotencyKey, key));
     return rows[0];
+  }
+
+  async findPaginated(page: number, limit: number) {
+    const offset = (page - 1) * limit;
+    const data = await this.db
+      .select()
+      .from(events)
+      .limit(limit)
+      .offset(offset);
+
+    const countResult = await this.db.all(
+      sql`SELECT COUNT(*) as count FROM events`
+    );
+    const total = Number(countResult[0]?.count || 0);
+
+    return { data, total };
   }
 
   async replay(eventId: string) {

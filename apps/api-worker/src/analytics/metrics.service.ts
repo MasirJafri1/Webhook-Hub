@@ -22,6 +22,13 @@ export class MetricsService {
     const latency = await this.metricsRepository.getAverageLatency();
     const retry = await this.metricsRepository.getRetryStats();
     const dead = await this.metricsRepository.getDeadCount();
+    const endpointHealthRaw = await this.metricsRepository.getEndpointHealth();
+
+    const endpointHealth = endpointHealthRaw.map((row: any) => ({
+      endpoint_id: String(row.endpoint_id),
+      total: Number(row.total || 0),
+      successful: Number(row.successful || 0),
+    }));
 
     return {
       overview,
@@ -35,6 +42,7 @@ export class MetricsService {
       dead: {
         dead: Number(dead?.dead || 0),
       },
+      endpointHealth,
     };
   }
 }

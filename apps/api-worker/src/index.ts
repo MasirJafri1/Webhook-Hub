@@ -10,8 +10,30 @@ import type { Env } from "./types/env";
 
 const router = Router();
 
+router.options("*", () => {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "access-control-allow-headers":
+        "content-type, x-webhook-id, x-webhook-timestamp, x-webhook-signature, idempotency-key",
+    },
+  });
+});
+
 router.get("/health", () => healthHandler());
 router.get("/version", () => versionHandler());
+
+router.post("/test/reset-retry", async (request: Request, env: Env) => {
+  await env.DB.prepare("UPDATE events SET next_retry_at = 0").run();
+  return new Response("Ok");
+});
+
+router.get("/test/query-event/:id", async (request: any, env: Env) => {
+  const row = await env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(request.params.id).first();
+  return new Response(JSON.stringify(row), { headers: { "content-type": "application/json" } });
+});
 
 registerWebhookRoutes(router);
 registerEventRoutes(router);
