@@ -173,6 +173,37 @@ export const registerEventRoutes = (router: any) => {
     },
   );
 
+  router.post(
+    "/api/v1/events/replay-window",
+    authenticate,
+    async (request: any, env: Env) => {
+      const body: any = await request.json();
+      if (!body.from || !body.to) {
+        return json({ error: "from and to dates are required" }, 400);
+      }
+
+      const from = new Date(body.from).getTime();
+      const to = new Date(body.to).getTime();
+
+      if (isNaN(from) || isNaN(to)) {
+        return json({ error: "Invalid date format" }, 400);
+      }
+
+      const db = getDb(env);
+      const repository = new EventRepository(db);
+      await repository.replayWindow(from, to, request.projectId);
+
+      // Audit Log
+      const auditService = new AuditService(db);
+      const actor =
+        request.headers.get("x-member-email") ||
+        `api_key:${request.apiKeyName || "unnamed"}`;
+      await auditService.log("EVENT_REPLAY_WINDOW", actor, request.projectId);
+
+      return json({ success: true, from: body.from, to: body.to });
+    },
+  );
+
   router.get(
     "/api/v1/events/:id/timeline",
     authenticate,

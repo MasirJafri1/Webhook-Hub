@@ -21,5 +21,21 @@
     "crons": [
       "* * * * *"
     ]
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "EVENT_LOCK",
+        "class_name": "EventLock"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": [
+        "EventLock"
+      ]
+    }
+  ]
 }

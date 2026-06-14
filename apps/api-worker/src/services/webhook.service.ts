@@ -8,6 +8,9 @@ export class WebhookService {
       name: string;
       url: string;
       requestsPerMinute?: number;
+      eventFilters?: string[];
+      payloadTransform?: Record<string, unknown>;
+      version?: string;
     },
     projectId: string,
   ) {
@@ -19,6 +22,13 @@ export class WebhookService {
       currentSecret: crypto.randomUUID(),
       previousSecret: null,
       secretRotatedAt: null,
+      eventFilters: payload.eventFilters
+        ? JSON.stringify(payload.eventFilters)
+        : null,
+      payloadTransform: payload.payloadTransform
+        ? JSON.stringify(payload.payloadTransform)
+        : null,
+      version: payload.version || "v1",
       active: true,
       createdAt: Date.now(),
       deletedAt: null,

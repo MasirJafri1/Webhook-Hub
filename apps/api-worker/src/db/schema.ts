@@ -11,6 +11,7 @@ export const projects = sqliteTable("projects", {
   organizationId: text("organization_id").notNull(),
   name: text("name").notNull(),
   monthlyEventLimit: integer("monthly_event_limit"),
+  retentionDays: integer("retention_days").default(30),
   createdAt: integer("created_at").notNull(),
 });
 
@@ -46,6 +47,9 @@ export const webhookEndpoints = sqliteTable("webhook_endpoints", {
   currentSecret: text("current_secret").notNull(),
   previousSecret: text("previous_secret"),
   secretRotatedAt: integer("secret_rotated_at"),
+  eventFilters: text("event_filters"),
+  payloadTransform: text("payload_transform"),
+  version: text("version").default("v1"),
   active: integer("active", {
     mode: "boolean",
   }).notNull(),

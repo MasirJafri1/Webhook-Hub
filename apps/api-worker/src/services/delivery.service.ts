@@ -1,6 +1,8 @@
 import { nanoid } from "nanoid";
 import { RETRY_DELAYS } from "../constants/retry-policy";
 import { createSignature } from "../utils/signature";
+import { TransformService } from "./transform.service";
+import { VersionService } from "./version.service";
 
 async function sha256(message: string): Promise<string> {
   const normalized = message.replace(
@@ -29,11 +31,34 @@ export class DeliveryService {
   }
 
   async deliver(event: any) {
-    const endpoint = await this.webhookRepository.findById(event.endpointId);
+    const endpoint = await this.webhookRepository.findById(
+      event.endpointId,
+      event.projectId,
+    );
 
     if (!endpoint) {
       await this.eventRepository.markDead(event.id);
       return;
+    }
+
+    // Apply payload transformation and versioning
+    let finalPayload = event.payload;
+    try {
+      let parsed =
+        typeof event.payload === "string"
+          ? JSON.parse(event.payload)
+          : event.payload;
+
+      // Apply transforms
+      parsed = TransformService.apply(parsed, endpoint.payloadTransform);
+
+      // Apply versioning
+      parsed = VersionService.format(parsed, endpoint.version);
+
+      finalPayload = JSON.stringify(parsed);
+    } catch {
+      // If parsing fails, send raw payload
+      finalPayload = event.payload;
     }
 
     const started = Date.now();
@@ -44,7 +69,7 @@ export class DeliveryService {
         endpoint.currentSecret,
         timestamp,
         event.id,
-        event.payload,
+        finalPayload,
       );
 
       const response = await fetch(endpoint.url, {
@@ -54,8 +79,9 @@ export class DeliveryService {
           "x-webhook-id": event.id,
           "x-webhook-timestamp": timestamp,
           "x-webhook-signature": signature,
+          "x-webhook-version": endpoint.version || "v1",
         },
-        body: event.payload,
+        body: finalPayload,
       });
 
       const latency = Date.now() - started;

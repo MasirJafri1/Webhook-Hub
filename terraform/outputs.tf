@@ -1,7 +1,7 @@
 output "d1_id" {
-  value = cloudflare_d1_database.main.id
+  value = module.webhook_platform.d1_id
 }
 
 output "kv_id" {
-  value = cloudflare_workers_kv_namespace.cache.id
+  value = module.webhook_platform.kv_id
 }

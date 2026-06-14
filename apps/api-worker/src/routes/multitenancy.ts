@@ -56,6 +56,10 @@ export const registerMultitenancyRoutes = (router: any) => {
         body.monthlyEventLimit !== undefined
           ? Number(body.monthlyEventLimit)
           : null,
+      retentionDays:
+        body.retentionDays !== undefined
+          ? Number(body.retentionDays)
+          : 30,
       createdAt: Date.now(),
     };
     await db.insert(projects).values(project);

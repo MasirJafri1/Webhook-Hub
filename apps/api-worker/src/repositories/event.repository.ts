@@ -1,4 +1,4 @@
-import { and, eq, lte, or, sql } from "drizzle-orm";
+import { and, eq, lte, or, sql, gte } from "drizzle-orm";
 import { events } from "../db/schema";
 
 export class EventRepository {
@@ -167,5 +167,56 @@ export class EventRepository {
         lastAttemptAt: Date.now(),
       })
       .where(eq(events.id, eventId));
+  }
+
+  async searchEvents(filters: {
+    projectId: string;
+    eventType?: string;
+    status?: string;
+    from?: number;
+    to?: number;
+    endpointId?: string;
+  }) {
+    const conditions = [eq(events.projectId, filters.projectId)];
+
+    if (filters.eventType) {
+      conditions.push(eq(events.eventType, filters.eventType));
+    }
+    if (filters.status) {
+      conditions.push(eq(events.status, filters.status));
+    }
+    if (filters.from) {
+      conditions.push(gte(events.createdAt, filters.from));
+    }
+    if (filters.to) {
+      conditions.push(lte(events.createdAt, filters.to));
+    }
+    if (filters.endpointId) {
+      conditions.push(eq(events.endpointId, filters.endpointId));
+    }
+
+    return this.db
+      .select()
+      .from(events)
+      .where(and(...conditions));
+  }
+
+  async replayWindow(from: number, to: number, projectId: string) {
+    return this.db
+      .update(events)
+      .set({
+        status: "pending",
+        retryCount: 0,
+        nextRetryAt: null,
+        lastErrorHash: null,
+        poisoned: false,
+      })
+      .where(
+        and(
+          eq(events.projectId, projectId),
+          gte(events.createdAt, from),
+          lte(events.createdAt, to),
+        ),
+      );
   }
 }

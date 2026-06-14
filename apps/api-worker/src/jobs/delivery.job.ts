@@ -31,25 +31,73 @@ export async function runDeliveryJob(env: any) {
         event.endpointId,
         event.projectId,
       );
-      if (endpoint) {
-        const limit = endpoint.requestsPerMinute ?? 60;
-        const isLimited = await rateLimitService.isRateLimited(
-          endpoint.id,
-          limit,
-        );
-        if (isLimited) {
-          console.log(
-            `Endpoint ${endpoint.id} rate limited. Skipping event ${event.id}`,
-          );
-          continue;
+      if (!endpoint) {
+        continue;
+      }
+
+      // Event filter check
+      if (endpoint.eventFilters) {
+        try {
+          const filters: string[] = JSON.parse(endpoint.eventFilters);
+          if (filters.length > 0 && !filters.includes(event.eventType)) {
+            console.log(
+              `Event ${event.id} (${event.eventType}) filtered out by endpoint ${endpoint.id}`,
+            );
+            await eventRepo.markDelivered(event.id);
+            continue;
+          }
+        } catch {
+          // Invalid JSON — skip filter check, deliver normally
         }
       }
+
+      // Rate limit check
+      const limit = endpoint.requestsPerMinute ?? 60;
+      const isLimited = await rateLimitService.isRateLimited(
+        endpoint.id,
+        limit,
+      );
+      if (isLimited) {
+        console.log(
+          `Endpoint ${endpoint.id} rate limited. Skipping event ${event.id}`,
+        );
+        continue;
+      }
+
+      // Durable Object lock (if available)
+      if (env.EVENT_LOCK) {
+        try {
+          const lockId = env.EVENT_LOCK.idFromName(event.id);
+          const stub = env.EVENT_LOCK.get(lockId);
+          const lockRes = await stub.fetch(new Request("https://lock/acquire"));
+          const lockData: any = await lockRes.json();
+          if (!lockData.acquired) {
+            console.log(`Event ${event.id} already locked. Skipping.`);
+            continue;
+          }
+        } catch {
+          // DO not available — proceed without lock
+        }
+      }
+
       deliverables.push(event);
     }
 
     await Promise.all(
       deliverables.map(async (event: any) => {
-        await service.deliver(event);
+        try {
+          await service.deliver(event);
+        } finally {
+          if (env.EVENT_LOCK) {
+            try {
+              const lockId = env.EVENT_LOCK.idFromName(event.id);
+              const stub = env.EVENT_LOCK.get(lockId);
+              await stub.fetch(new Request("https://lock/release"));
+            } catch {
+              // Ignore release errors
+            }
+          }
+        }
       }),
     );
   }

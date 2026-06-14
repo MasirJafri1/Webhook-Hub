@@ -2,11 +2,13 @@ import { Router } from "itty-router";
 import { healthHandler } from "./routes/health";
 import { versionHandler } from "./routes/version";
 import { registerWebhookRoutes } from "./routes/webhooks";
+import { registerSearchRoutes } from "./routes/search";
 import { registerEventRoutes } from "./routes/events";
 import { registerDeliveryRoutes } from "./routes/deliveries";
 import { registerMetricsRoutes } from "./routes/metrics";
 import { registerMultitenancyRoutes } from "./routes/multitenancy";
 import { runDeliveryJob } from "./jobs/delivery.job";
+import { runRetentionJob } from "./jobs/retention.job";
 import type { Env } from "./types/env";
 
 const router = Router();
@@ -40,11 +42,36 @@ router.get("/test/query-event/:id", async (request: any, env: Env) => {
   });
 });
 
+router.post("/test/reset-db", async (request: Request, env: Env) => {
+  await env.DB.prepare("DELETE FROM deliveries").run();
+  await env.DB.prepare("DELETE FROM events").run();
+  await env.DB.prepare("DELETE FROM webhook_endpoints").run();
+  await env.DB.prepare("DELETE FROM api_keys").run();
+  await env.DB.prepare("DELETE FROM projects").run();
+  await env.DB.prepare("DELETE FROM organizations").run();
+  await env.DB.prepare("DELETE FROM audit_logs").run();
+  return new Response("Ok");
+});
+
+router.post("/test/update-created-at", async (request: Request, env: Env) => {
+  const body: any = await request.json();
+  await env.DB.prepare("UPDATE events SET created_at = ? WHERE id = ?")
+    .bind(body.createdAt, body.eventId)
+    .run();
+  await env.DB.prepare("UPDATE deliveries SET created_at = ? WHERE event_id = ?")
+    .bind(body.createdAt, body.eventId)
+    .run();
+  return new Response("Ok");
+});
+
 registerWebhookRoutes(router);
+registerSearchRoutes(router);
 registerEventRoutes(router);
 registerDeliveryRoutes(router);
 registerMetricsRoutes(router);
 registerMultitenancyRoutes(router);
+
+export { EventLock } from "./durable/event-lock";
 
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) => {
@@ -55,6 +82,15 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ) {
-    ctx.waitUntil(runDeliveryJob(env));
+    ctx.waitUntil(
+      runDeliveryJob(env).catch((e) =>
+        console.error("Scheduled delivery job failed:", e),
+      ),
+    );
+    ctx.waitUntil(
+      runRetentionJob(env).catch((e) =>
+        console.error("Scheduled retention job failed:", e),
+      ),
+    );
   },
 };
