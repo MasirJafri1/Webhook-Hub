@@ -1,0 +1,20 @@
+{
+  "name": "webhook-platform-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-14",
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "webhook-platform-db",
+      "database_id": "REPLACE_LATER"
+    }
+  ],
+
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "REPLACE_LATER"
+    }
+  ]
+}
