@@ -1,4 +1,4 @@
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { webhookEndpoints } from "../db/schema";
 
 export class WebhookRepository {
@@ -9,41 +9,61 @@ export class WebhookRepository {
     return data;
   }
 
-  async findAll() {
+  async findAll(projectId: string) {
     return this.db
       .select()
       .from(webhookEndpoints)
-      .where(isNull(webhookEndpoints.deletedAt));
+      .where(
+        and(
+          eq(webhookEndpoints.projectId, projectId),
+          isNull(webhookEndpoints.deletedAt),
+        ),
+      );
   }
 
-  async findById(id: string) {
+  async findById(id: string, projectId: string) {
     const rows = await this.db
       .select()
       .from(webhookEndpoints)
-      .where(eq(webhookEndpoints.id, id));
+      .where(
+        and(
+          eq(webhookEndpoints.id, id),
+          eq(webhookEndpoints.projectId, projectId),
+        ),
+      );
     return rows[0];
   }
 
-  async softDelete(id: string) {
+  async softDelete(id: string, projectId: string) {
     return this.db
       .update(webhookEndpoints)
       .set({
         deletedAt: Date.now(),
         active: false,
       })
-      .where(eq(webhookEndpoints.id, id));
+      .where(
+        and(
+          eq(webhookEndpoints.id, id),
+          eq(webhookEndpoints.projectId, projectId),
+        ),
+      );
   }
 
-  async exists(id: string) {
+  async exists(id: string, projectId: string) {
     const rows = await this.db
       .select()
       .from(webhookEndpoints)
-      .where(eq(webhookEndpoints.id, id));
+      .where(
+        and(
+          eq(webhookEndpoints.id, id),
+          eq(webhookEndpoints.projectId, projectId),
+        ),
+      );
     return rows.length > 0;
   }
 
-  async rotateSecret(id: string) {
-    const webhook = await this.findById(id);
+  async rotateSecret(id: string, projectId: string) {
+    const webhook = await this.findById(id, projectId);
     if (!webhook) {
       throw new Error("Webhook not found");
     }
@@ -55,7 +75,12 @@ export class WebhookRepository {
         currentSecret: newSecret,
         secretRotatedAt: Date.now(),
       })
-      .where(eq(webhookEndpoints.id, id));
+      .where(
+        and(
+          eq(webhookEndpoints.id, id),
+          eq(webhookEndpoints.projectId, projectId),
+        ),
+      );
     return newSecret;
   }
 }

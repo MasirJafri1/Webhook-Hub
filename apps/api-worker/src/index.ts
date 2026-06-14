@@ -5,6 +5,7 @@ import { registerWebhookRoutes } from "./routes/webhooks";
 import { registerEventRoutes } from "./routes/events";
 import { registerDeliveryRoutes } from "./routes/deliveries";
 import { registerMetricsRoutes } from "./routes/metrics";
+import { registerMultitenancyRoutes } from "./routes/multitenancy";
 import { runDeliveryJob } from "./jobs/delivery.job";
 import type { Env } from "./types/env";
 
@@ -31,14 +32,19 @@ router.post("/test/reset-retry", async (request: Request, env: Env) => {
 });
 
 router.get("/test/query-event/:id", async (request: any, env: Env) => {
-  const row = await env.DB.prepare("SELECT * FROM events WHERE id = ?").bind(request.params.id).first();
-  return new Response(JSON.stringify(row), { headers: { "content-type": "application/json" } });
+  const row = await env.DB.prepare("SELECT * FROM events WHERE id = ?")
+    .bind(request.params.id)
+    .first();
+  return new Response(JSON.stringify(row), {
+    headers: { "content-type": "application/json" },
+  });
 });
 
 registerWebhookRoutes(router);
 registerEventRoutes(router);
 registerDeliveryRoutes(router);
 registerMetricsRoutes(router);
+registerMultitenancyRoutes(router);
 
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) => {

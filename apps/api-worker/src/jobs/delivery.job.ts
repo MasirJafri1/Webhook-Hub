@@ -27,7 +27,10 @@ export async function runDeliveryJob(env: any) {
   for (const batch of chunk(events, 20)) {
     const deliverables: any[] = [];
     for (const event of batch as any[]) {
-      const endpoint = await webhookRepo.findById(event.endpointId);
+      const endpoint = await webhookRepo.findById(
+        event.endpointId,
+        event.projectId,
+      );
       if (endpoint) {
         const limit = endpoint.requestsPerMinute ?? 60;
         const isLimited = await rateLimitService.isRateLimited(

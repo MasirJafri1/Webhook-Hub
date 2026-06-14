@@ -1,8 +1,8 @@
 export class MetricsService {
   constructor(private metricsRepository: any) {}
 
-  async getOverview() {
-    const stats = await this.metricsRepository.getOverview();
+  async getOverview(projectId: string) {
+    const stats = await this.metricsRepository.getOverview(projectId);
 
     const total = Number(stats?.total || 0);
     const success = Number(stats?.success || 0);
@@ -17,12 +17,13 @@ export class MetricsService {
     };
   }
 
-  async getDashboardMetrics() {
-    const overview = await this.getOverview();
-    const latency = await this.metricsRepository.getAverageLatency();
-    const retry = await this.metricsRepository.getRetryStats();
-    const dead = await this.metricsRepository.getDeadCount();
-    const endpointHealthRaw = await this.metricsRepository.getEndpointHealth();
+  async getDashboardMetrics(projectId: string) {
+    const overview = await this.getOverview(projectId);
+    const latency = await this.metricsRepository.getAverageLatency(projectId);
+    const retry = await this.metricsRepository.getRetryStats(projectId);
+    const dead = await this.metricsRepository.getDeadCount(projectId);
+    const endpointHealthRaw =
+      await this.metricsRepository.getEndpointHealth(projectId);
 
     const endpointHealth = endpointHealthRaw.map((row: any) => ({
       endpoint_id: String(row.endpoint_id),

@@ -9,13 +9,16 @@ export class EventRepository {
     return data;
   }
 
-  async findById(id: string) {
-    const rows = await this.db.select().from(events).where(eq(events.id, id));
+  async findById(id: string, projectId: string) {
+    const rows = await this.db
+      .select()
+      .from(events)
+      .where(and(eq(events.id, id), eq(events.projectId, projectId)));
     return rows[0];
   }
 
-  async findAll() {
-    return this.db.select().from(events);
+  async findAll(projectId: string) {
+    return this.db.select().from(events).where(eq(events.projectId, projectId));
   }
 
   async getDeliverableEvents() {
@@ -67,31 +70,34 @@ export class EventRepository {
       .where(eq(events.id, eventId));
   }
 
-  async findByIdempotencyKey(key: string) {
+  async findByIdempotencyKey(key: string, projectId: string) {
     const rows = await this.db
       .select()
       .from(events)
-      .where(eq(events.idempotencyKey, key));
+      .where(
+        and(eq(events.idempotencyKey, key), eq(events.projectId, projectId)),
+      );
     return rows[0];
   }
 
-  async findPaginated(page: number, limit: number) {
+  async findPaginated(page: number, limit: number, projectId: string) {
     const offset = (page - 1) * limit;
     const data = await this.db
       .select()
       .from(events)
+      .where(eq(events.projectId, projectId))
       .limit(limit)
       .offset(offset);
 
     const countResult = await this.db.all(
-      sql`SELECT COUNT(*) as count FROM events`
+      sql`SELECT COUNT(*) as count FROM events WHERE project_id = ${projectId}`,
     );
     const total = Number(countResult[0]?.count || 0);
 
     return { data, total };
   }
 
-  async replay(eventId: string) {
+  async replay(eventId: string, projectId: string) {
     return this.db
       .update(events)
       .set({
@@ -101,10 +107,10 @@ export class EventRepository {
         lastErrorHash: null,
         poisoned: false,
       })
-      .where(eq(events.id, eventId));
+      .where(and(eq(events.id, eventId), eq(events.projectId, projectId)));
   }
 
-  async replayAllDead() {
+  async replayAllDead(projectId: string) {
     return this.db
       .update(events)
       .set({
@@ -114,7 +120,12 @@ export class EventRepository {
         lastErrorHash: null,
         poisoned: false,
       })
-      .where(or(eq(events.status, "dead"), eq(events.status, "poisoned")));
+      .where(
+        and(
+          eq(events.projectId, projectId),
+          or(eq(events.status, "dead"), eq(events.status, "poisoned")),
+        ),
+      );
   }
 
   async markPoisoned(eventId: string, errorHash: string) {

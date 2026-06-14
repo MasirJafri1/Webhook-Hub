@@ -1,4 +1,4 @@
-import { eq, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { events } from "../db/schema";
 import type { Env } from "../types/env";
 import { CreateEventSchema } from "../schemas/event.schema";
@@ -8,25 +8,45 @@ import { WebhookRepository } from "../repositories/webhook.repository";
 import { EventService } from "../services/event.service";
 import { json } from "../utils/response";
 import { DeliveryRepository } from "../repositories/delivery.repository";
+import { authenticate } from "../middleware/auth";
+import { AuditService } from "../services/audit.service";
 
 export const registerEventRoutes = (router: any) => {
-  router.post("/api/v1/events", async (request: Request, env: Env) => {
-    const body = await request.json();
-    const validated = CreateEventSchema.parse(body);
-    const db = getDb(env);
-    const eventRepository = new EventRepository(db);
-    const webhookRepository = new WebhookRepository(db);
-    const service = new EventService(eventRepository, webhookRepository);
-    const result = await service.createEvent(validated);
+  router.post(
+    "/api/v1/events",
+    authenticate,
+    async (request: any, env: Env) => {
+      try {
+        const body = await request.json();
+        const validated = CreateEventSchema.parse(body);
+        const db = getDb(env);
+        const eventRepository = new EventRepository(db);
+        const webhookRepository = new WebhookRepository(db);
+        const service = new EventService(
+          eventRepository,
+          webhookRepository,
+          db,
+        );
+        const result = await service.createEvent(validated, request.projectId);
 
-    try {
-      result.payload = JSON.parse(result.payload);
-    } catch {}
+        try {
+          result.payload = JSON.parse(result.payload);
+        } catch {}
 
-    return json(result, 201);
-  });
+        return json(result, 201);
+      } catch (err: any) {
+        if (err.message === "quota_exceeded") {
+          return json({ error: "quota_exceeded" }, 403);
+        }
+        if (err.message === "Webhook endpoint not found") {
+          return json({ error: "Webhook endpoint not found" }, 404);
+        }
+        throw err;
+      }
+    },
+  );
 
-  router.get("/api/v1/events", async (request: any, env: Env) => {
+  router.get("/api/v1/events", authenticate, async (request: any, env: Env) => {
     const db = getDb(env);
     const repository = new EventRepository(db);
 
@@ -37,7 +57,11 @@ export const registerEventRoutes = (router: any) => {
     if (hasPage || hasLimit) {
       const page = parseInt(url.searchParams.get("page") || "1", 10);
       const limit = parseInt(url.searchParams.get("limit") || "20", 10);
-      const { data, total } = await repository.findPaginated(page, limit);
+      const { data, total } = await repository.findPaginated(
+        page,
+        limit,
+        request.projectId,
+      );
 
       const formattedEvents = data.map((event: any) => {
         try {
@@ -58,7 +82,7 @@ export const registerEventRoutes = (router: any) => {
       });
     }
 
-    const eventsList = await repository.findAll();
+    const eventsList = await repository.findAll(request.projectId);
     const formattedEvents = eventsList.map((event: any) => {
       try {
         return {
@@ -72,76 +96,143 @@ export const registerEventRoutes = (router: any) => {
     return json(formattedEvents);
   });
 
-  router.get("/api/v1/events/dead", async (_request: any, env: Env) => {
-    const db = getDb(env);
-    const rows = await db
-      .select()
-      .from(events)
-      .where(eq(events.status, "dead"));
+  router.get(
+    "/api/v1/events/dead",
+    authenticate,
+    async (request: any, env: Env) => {
+      const db = getDb(env);
+      const rows = await db
+        .select()
+        .from(events)
+        .where(
+          and(
+            eq(events.status, "dead"),
+            eq(events.projectId, request.projectId),
+          ),
+        );
 
-    const formattedRows = rows.map((event: any) => {
-      try {
-        return {
-          ...event,
-          payload: JSON.parse(event.payload),
-        };
-      } catch {
-        return event;
+      const formattedRows = rows.map((event: any) => {
+        try {
+          return {
+            ...event,
+            payload: JSON.parse(event.payload),
+          };
+        } catch {
+          return event;
+        }
+      });
+      return json(formattedRows);
+    },
+  );
+
+  router.get(
+    "/api/v1/events/poisoned",
+    authenticate,
+    async (request: any, env: Env) => {
+      const db = getDb(env);
+      const rows = await db
+        .select()
+        .from(events)
+        .where(
+          and(
+            eq(events.status, "poisoned"),
+            eq(events.projectId, request.projectId),
+          ),
+        );
+
+      const formattedRows = rows.map((event: any) => {
+        try {
+          return {
+            ...event,
+            payload: JSON.parse(event.payload),
+          };
+        } catch {
+          return event;
+        }
+      });
+      return json(formattedRows);
+    },
+  );
+
+  router.post(
+    "/api/v1/events/replay-all",
+    authenticate,
+    async (request: any, env: Env) => {
+      const db = getDb(env);
+      const repository = new EventRepository(db);
+      await repository.replayAllDead(request.projectId);
+
+      // Audit Log
+      const auditService = new AuditService(db);
+      const actor =
+        request.headers.get("x-member-email") ||
+        `api_key:${request.apiKeyName || "unnamed"}`;
+      await auditService.log("EVENT_REPLAYED", actor, request.projectId);
+
+      return json({ success: true });
+    },
+  );
+
+  router.get(
+    "/api/v1/events/:id/timeline",
+    authenticate,
+    async (request: any, env: Env) => {
+      const db = getDb(env);
+      const repository = new DeliveryRepository(db);
+      const result = await repository.findByEventId(
+        request.params.id,
+        request.projectId,
+      );
+      return json(result);
+    },
+  );
+
+  router.post(
+    "/api/v1/events/:id/replay",
+    authenticate,
+    async (request: any, env: Env) => {
+      const db = getDb(env);
+      const repository = new EventRepository(db);
+
+      // Verify event ownership
+      const event = await repository.findById(
+        request.params.id,
+        request.projectId,
+      );
+      if (!event) {
+        return json({ error: "Event not found" }, 404);
       }
-    });
-    return json(formattedRows);
-  });
 
-  router.get("/api/v1/events/poisoned", async (_request: any, env: Env) => {
-    const db = getDb(env);
-    const rows = await db
-      .select()
-      .from(events)
-      .where(eq(events.status, "poisoned"));
+      await repository.replay(request.params.id, request.projectId);
 
-    const formattedRows = rows.map((event: any) => {
-      try {
-        return {
-          ...event,
-          payload: JSON.parse(event.payload),
-        };
-      } catch {
-        return event;
+      // Audit Log
+      const auditService = new AuditService(db);
+      const actor =
+        request.headers.get("x-member-email") ||
+        `api_key:${request.apiKeyName || "unnamed"}`;
+      await auditService.log("EVENT_REPLAYED", actor, request.projectId);
+
+      return json({ success: true });
+    },
+  );
+
+  router.get(
+    "/api/v1/events/:id",
+    authenticate,
+    async (request: any, env: Env) => {
+      const db = getDb(env);
+      const repository = new EventRepository(db);
+      const event = await repository.findById(
+        request.params.id,
+        request.projectId,
+      );
+      if (!event) {
+        return json({ error: "Event not found" }, 404);
       }
-    });
-    return json(formattedRows);
-  });
-
-  router.post("/api/v1/events/replay-all", async (request: any, env: Env) => {
-    const db = getDb(env);
-    const repository = new EventRepository(db);
-    await repository.replayAllDead();
-    return json({ success: true });
-  });
-
-  router.get("/api/v1/events/:id/timeline", async (request: any, env: Env) => {
-    const db = getDb(env);
-    const repository = new DeliveryRepository(db);
-    const result = await repository.findByEventId(request.params.id);
-    return json(result);
-  });
-
-  router.post("/api/v1/events/:id/replay", async (request: any, env: Env) => {
-    const db = getDb(env);
-    const repository = new EventRepository(db);
-    await repository.replay(request.params.id);
-    return json({ success: true });
-  });
-
-  router.get("/api/v1/events/:id", async (request: any, env: Env) => {
-    const db = getDb(env);
-    const repository = new EventRepository(db);
-    const event = await repository.findById(request.params.id);
-    if (event) {
       try {
         event.payload = JSON.parse(event.payload);
       } catch {}
-    }
-    return json(event);
-  });
+      return json(event);
+    },
+  );
 };

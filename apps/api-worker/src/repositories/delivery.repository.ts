@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { deliveries } from "../db/schema";
 
 export class DeliveryRepository {
@@ -9,14 +9,24 @@ export class DeliveryRepository {
     return data;
   }
 
-  async findAll() {
-    return this.db.select().from(deliveries);
-  }
-
-  async findByEventId(eventId: string) {
+  async findAll(projectId: string) {
     return this.db
       .select()
       .from(deliveries)
-      .where(eq(deliveries.eventId, eventId));
+      .where(
+        sql`event_id IN (SELECT id FROM events WHERE project_id = ${projectId})`,
+      );
+  }
+
+  async findByEventId(eventId: string, projectId: string) {
+    return this.db
+      .select()
+      .from(deliveries)
+      .where(
+        and(
+          eq(deliveries.eventId, eventId),
+          sql`event_id IN (SELECT id FROM events WHERE project_id = ${projectId})`,
+        ),
+      );
   }
 }
