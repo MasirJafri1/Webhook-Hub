@@ -1,0 +1,2 @@
+ALTER TABLE events ADD COLUMN last_error_hash TEXT;
+ALTER TABLE events ADD COLUMN poisoned INTEGER DEFAULT 0;

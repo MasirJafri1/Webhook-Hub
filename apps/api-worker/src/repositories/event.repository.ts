@@ -66,4 +66,79 @@ export class EventRepository {
       })
       .where(eq(events.id, eventId));
   }
+
+  async findByIdempotencyKey(key: string) {
+    const rows = await this.db
+      .select()
+      .from(events)
+      .where(eq(events.idempotencyKey, key));
+    return rows[0];
+  }
+
+  async replay(eventId: string) {
+    return this.db
+      .update(events)
+      .set({
+        status: "pending",
+        retryCount: 0,
+        nextRetryAt: null,
+        lastErrorHash: null,
+        poisoned: false,
+      })
+      .where(eq(events.id, eventId));
+  }
+
+  async replayAllDead() {
+    return this.db
+      .update(events)
+      .set({
+        status: "pending",
+        retryCount: 0,
+        nextRetryAt: null,
+        lastErrorHash: null,
+        poisoned: false,
+      })
+      .where(or(eq(events.status, "dead"), eq(events.status, "poisoned")));
+  }
+
+  async markPoisoned(eventId: string, errorHash: string) {
+    return this.db
+      .update(events)
+      .set({
+        status: "poisoned",
+        poisoned: true,
+        lastErrorHash: errorHash,
+        lastAttemptAt: Date.now(),
+      })
+      .where(eq(events.id, eventId));
+  }
+
+  async scheduleRetryWithErrorHash(
+    eventId: string,
+    retryCount: number,
+    nextRetryAt: number,
+    errorHash: string,
+  ) {
+    return this.db
+      .update(events)
+      .set({
+        status: "retrying",
+        retryCount,
+        nextRetryAt,
+        lastErrorHash: errorHash,
+        lastAttemptAt: Date.now(),
+      })
+      .where(eq(events.id, eventId));
+  }
+
+  async markDeadWithErrorHash(eventId: string, errorHash: string) {
+    return this.db
+      .update(events)
+      .set({
+        status: "dead",
+        lastErrorHash: errorHash,
+        lastAttemptAt: Date.now(),
+      })
+      .where(eq(events.id, eventId));
+  }
 }

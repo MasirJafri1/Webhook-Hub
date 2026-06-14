@@ -20,6 +20,8 @@ export const webhookEndpoints = sqliteTable("webhook_endpoints", {
   createdAt: integer("created_at").notNull(),
 
   deletedAt: integer("deleted_at"),
+
+  requestsPerMinute: integer("requests_per_minute").default(60),
 });
 
 export const events = sqliteTable("events", {
@@ -38,6 +40,12 @@ export const events = sqliteTable("events", {
   nextRetryAt: integer("next_retry_at"),
 
   lastAttemptAt: integer("last_attempt_at"),
+
+  idempotencyKey: text("idempotency_key"),
+
+  lastErrorHash: text("last_error_hash"),
+
+  poisoned: integer("poisoned", { mode: "boolean" }),
 
   createdAt: integer("created_at").notNull(),
 });

@@ -3,7 +3,11 @@ import { nanoid } from "nanoid";
 export class WebhookService {
   constructor(private repository: any) {}
 
-  async createWebhook(payload: { name: string; url: string }) {
+  async createWebhook(payload: {
+    name: string;
+    url: string;
+    requestsPerMinute?: number;
+  }) {
     const webhook = {
       id: nanoid(),
       name: payload.name,
@@ -14,6 +18,7 @@ export class WebhookService {
       active: true,
       createdAt: Date.now(),
       deletedAt: null,
+      requestsPerMinute: payload.requestsPerMinute,
     };
 
     return this.repository.create(webhook);

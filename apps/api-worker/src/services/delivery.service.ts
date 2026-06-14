@@ -2,6 +2,17 @@ import { nanoid } from "nanoid";
 import { RETRY_DELAYS } from "../constants/retry-policy";
 import { createSignature } from "../utils/signature";
 
+async function sha256(message: string): Promise<string> {
+  const normalized = message.replace(
+    /reference\s*=\s*[a-zA-Z0-9_-]+/g,
+    "reference=REDACTED",
+  );
+  const msgBuffer = new TextEncoder().encode(normalized);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export class DeliveryService {
   constructor(
     private deliveryRepository: any,
@@ -48,6 +59,7 @@ export class DeliveryService {
       });
 
       const latency = Date.now() - started;
+      const responseBody = await response.text();
 
       await this.deliveryRepository.create({
         id: nanoid(),
@@ -55,7 +67,7 @@ export class DeliveryService {
         endpointId: endpoint.id,
         status: response.ok ? "success" : "failed",
         responseCode: response.status,
-        responseBody: await response.text(),
+        responseBody: responseBody,
         latencyMs: latency,
         createdAt: Date.now(),
       });
@@ -63,28 +75,30 @@ export class DeliveryService {
       if (response.ok) {
         await this.eventRepository.markDelivered(event.id);
       } else {
-        const nextRetry = this.getNextRetry(event.retryCount);
-        if (!nextRetry) {
-          await this.eventRepository.markDead(event.id);
+        const errorHash = await sha256(responseBody);
+        if (event.lastErrorHash === errorHash && event.retryCount >= 2) {
+          await this.eventRepository.markPoisoned(event.id, errorHash);
         } else {
-          await this.eventRepository.scheduleRetry(
-            event.id,
-            event.retryCount + 1,
-            nextRetry,
-          );
+          const nextRetry = this.getNextRetry(event.retryCount);
+          if (!nextRetry) {
+            await this.eventRepository.markDeadWithErrorHash(
+              event.id,
+              errorHash,
+            );
+          } else {
+            await this.eventRepository.scheduleRetryWithErrorHash(
+              event.id,
+              event.retryCount + 1,
+              nextRetry,
+              errorHash,
+            );
+          }
         }
       }
     } catch (error) {
-      const nextRetry = this.getNextRetry(event.retryCount);
-      if (!nextRetry) {
-        await this.eventRepository.markDead(event.id);
-      } else {
-        await this.eventRepository.scheduleRetry(
-          event.id,
-          event.retryCount + 1,
-          nextRetry,
-        );
-      }
+      const errorMsg = String(error);
+      const errorHash = await sha256(errorMsg);
+      const latency = Date.now() - started;
 
       await this.deliveryRepository.create({
         id: nanoid(),
@@ -92,10 +106,26 @@ export class DeliveryService {
         endpointId: endpoint.id,
         status: "failed",
         responseCode: 0,
-        responseBody: String(error),
-        latencyMs: 0,
+        responseBody: errorMsg,
+        latencyMs: latency,
         createdAt: Date.now(),
       });
+
+      if (event.lastErrorHash === errorHash && event.retryCount >= 2) {
+        await this.eventRepository.markPoisoned(event.id, errorHash);
+      } else {
+        const nextRetry = this.getNextRetry(event.retryCount);
+        if (!nextRetry) {
+          await this.eventRepository.markDeadWithErrorHash(event.id, errorHash);
+        } else {
+          await this.eventRepository.scheduleRetryWithErrorHash(
+            event.id,
+            event.retryCount + 1,
+            nextRetry,
+            errorHash,
+          );
+        }
+      }
     }
   }
 }

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { events } from "../db/schema";
 import type { Env } from "../types/env";
 import { CreateEventSchema } from "../schemas/event.schema";
@@ -29,9 +29,9 @@ export const registerEventRoutes = (router: any) => {
   router.get("/api/v1/events", async (_request: any, env: Env) => {
     const db = getDb(env);
     const repository = new EventRepository(db);
-    const events = await repository.findAll();
+    const eventsList = await repository.findAll();
 
-    const formattedEvents = events.map((event: any) => {
+    const formattedEvents = eventsList.map((event: any) => {
       try {
         return {
           ...event,
@@ -64,11 +64,45 @@ export const registerEventRoutes = (router: any) => {
     return json(formattedRows);
   });
 
+  router.get("/api/v1/events/poisoned", async (_request: any, env: Env) => {
+    const db = getDb(env);
+    const rows = await db
+      .select()
+      .from(events)
+      .where(eq(events.status, "poisoned"));
+
+    const formattedRows = rows.map((event: any) => {
+      try {
+        return {
+          ...event,
+          payload: JSON.parse(event.payload),
+        };
+      } catch {
+        return event;
+      }
+    });
+    return json(formattedRows);
+  });
+
+  router.post("/api/v1/events/replay-all", async (request: any, env: Env) => {
+    const db = getDb(env);
+    const repository = new EventRepository(db);
+    await repository.replayAllDead();
+    return json({ success: true });
+  });
+
   router.get("/api/v1/events/:id/timeline", async (request: any, env: Env) => {
     const db = getDb(env);
     const repository = new DeliveryRepository(db);
     const result = await repository.findByEventId(request.params.id);
     return json(result);
+  });
+
+  router.post("/api/v1/events/:id/replay", async (request: any, env: Env) => {
+    const db = getDb(env);
+    const repository = new EventRepository(db);
+    await repository.replay(request.params.id);
+    return json({ success: true });
   });
 
   router.get("/api/v1/events/:id", async (request: any, env: Env) => {
