@@ -17,4 +17,22 @@ export class EventRepository {
   async findAll() {
     return this.db.select().from(events);
   }
+
+  async getPendingEvents() {
+    return this.db.select().from(events).where(eq(events.status, "pending"));
+  }
+
+  async markDelivered(id: string) {
+    return this.db
+      .update(events)
+      .set({ status: "delivered" })
+      .where(eq(events.id, id));
+  }
+
+  async markFailed(id: string) {
+    return this.db
+      .update(events)
+      .set({ status: "failed" })
+      .where(eq(events.id, id));
+  }
 }

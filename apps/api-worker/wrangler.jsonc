@@ -16,5 +16,10 @@
       "binding": "CACHE",
       "id": "REPLACE_LATER"
     }
-  ]
+  ],
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  }
 }

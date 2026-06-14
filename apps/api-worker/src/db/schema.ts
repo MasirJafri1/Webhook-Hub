@@ -31,3 +31,21 @@ export const events = sqliteTable("events", {
 
   createdAt: integer("created_at").notNull(),
 });
+
+export const deliveries = sqliteTable("deliveries", {
+  id: text("id").primaryKey(),
+
+  eventId: text("event_id").notNull(),
+
+  endpointId: text("endpoint_id").notNull(),
+
+  status: text("status").notNull(),
+
+  responseCode: integer("response_code"),
+
+  responseBody: text("response_body"),
+
+  latencyMs: integer("latency_ms"),
+
+  createdAt: integer("created_at").notNull(),
+});
