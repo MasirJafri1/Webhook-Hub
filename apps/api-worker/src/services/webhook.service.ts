@@ -1,16 +1,9 @@
-import { nanoid } from "nanoid"
+import { nanoid } from "nanoid";
 
 export class WebhookService {
-  constructor(
-    private repository: any
-  ) {}
+  constructor(private repository: any) {}
 
-  async createWebhook(
-    payload: {
-      name: string
-      url: string
-    }
-  ) {
+  async createWebhook(payload: { name: string; url: string }) {
     const webhook = {
       id: nanoid(),
       name: payload.name,
@@ -18,11 +11,9 @@ export class WebhookService {
       secret: crypto.randomUUID(),
       active: true,
       createdAt: Date.now(),
-      deletedAt: null
-    }
+      deletedAt: null,
+    };
 
-    return this.repository.create(
-      webhook
-    )
+    return this.repository.create(webhook);
   }
 }

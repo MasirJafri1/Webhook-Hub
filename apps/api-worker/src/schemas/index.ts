@@ -1,3 +1,3 @@
-import { z } from "zod"
+import { z } from "zod";
 
-export const EmptySchema = z.object({})
+export const EmptySchema = z.object({});

@@ -1,8 +1,8 @@
-import { json } from "../utils/response"
+import { json } from "../utils/response";
 
 export const healthHandler = () => {
   return json({
     status: "ok",
-    service: "webhook-platform-api"
-  })
-}
+    service: "webhook-platform-api",
+  });
+};

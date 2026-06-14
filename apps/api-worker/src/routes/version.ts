@@ -1,7 +1,7 @@
-import { json } from "../utils/response"
+import { json } from "../utils/response";
 
 export const versionHandler = () => {
   return json({
-    version: "0.1.0"
-  })
-}
+    version: "0.1.0",
+  });
+};
