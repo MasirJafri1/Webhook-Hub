@@ -19,4 +19,6 @@ export const CreateWebhookSchema = z.object({
     .optional(),
 
   version: z.enum(["v1", "v2"]).optional(),
+
+  customHeaders: z.record(z.string(), z.string()).optional(),
 });

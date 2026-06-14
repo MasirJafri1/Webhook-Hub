@@ -7,6 +7,7 @@ import { registerEventRoutes } from "./routes/events";
 import { registerDeliveryRoutes } from "./routes/deliveries";
 import { registerMetricsRoutes } from "./routes/metrics";
 import { registerMultitenancyRoutes } from "./routes/multitenancy";
+import { registerDocsRoutes } from "./routes/docs";
 import { runDeliveryJob } from "./jobs/delivery.job";
 import { runRetentionJob } from "./jobs/retention.job";
 import type { Env } from "./types/env";
@@ -70,6 +71,7 @@ registerEventRoutes(router);
 registerDeliveryRoutes(router);
 registerMetricsRoutes(router);
 registerMultitenancyRoutes(router);
+registerDocsRoutes(router);
 
 
 export default {

@@ -56,6 +56,8 @@ export const webhookEndpoints = sqliteTable("webhook_endpoints", {
   createdAt: integer("created_at").notNull(),
   deletedAt: integer("deleted_at"),
   requestsPerMinute: integer("requests_per_minute").default(60),
+  consecutiveFailures: integer("consecutive_failures").default(0),
+  customHeaders: text("custom_headers"),
 });
 
 export const events = sqliteTable("events", {

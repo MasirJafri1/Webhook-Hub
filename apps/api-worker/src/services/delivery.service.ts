@@ -3,6 +3,7 @@ import { RETRY_DELAYS } from "../constants/retry-policy";
 import { createSignature } from "../utils/signature";
 import { TransformService } from "./transform.service";
 import { VersionService } from "./version.service";
+import { AuditService } from "./audit.service";
 
 async function sha256(message: string): Promise<string> {
   const normalized = message.replace(
@@ -20,6 +21,7 @@ export class DeliveryService {
     private deliveryRepository: any,
     private eventRepository: any,
     private webhookRepository: any,
+    private db?: any,
   ) {}
 
   private getNextRetry(retryCount: number) {
@@ -72,15 +74,26 @@ export class DeliveryService {
         finalPayload,
       );
 
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+        "x-webhook-id": event.id,
+        "x-webhook-timestamp": timestamp,
+        "x-webhook-signature": signature,
+        "x-webhook-version": endpoint.version || "v1",
+      };
+
+      if (endpoint.customHeaders) {
+        try {
+          const parsedHeaders = JSON.parse(endpoint.customHeaders);
+          Object.assign(headers, parsedHeaders);
+        } catch (e) {
+          console.error("Failed to parse custom headers:", e);
+        }
+      }
+
       const response = await fetch(endpoint.url, {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-webhook-id": event.id,
-          "x-webhook-timestamp": timestamp,
-          "x-webhook-signature": signature,
-          "x-webhook-version": endpoint.version || "v1",
-        },
+        headers,
         body: finalPayload,
       });
 
@@ -100,8 +113,16 @@ export class DeliveryService {
 
       if (response.ok) {
         await this.eventRepository.markDelivered(event.id);
+        await this.webhookRepository.resetConsecutiveFailures(endpoint.id, event.projectId);
       } else {
         const errorHash = await sha256(responseBody);
+
+        const failCount = await this.webhookRepository.incrementConsecutiveFailures(endpoint.id, event.projectId);
+        if (failCount >= 20 && this.db) {
+          const auditService = new AuditService(this.db);
+          await auditService.log("WEBHOOK_DISABLED", "system", event.projectId);
+        }
+
         if (event.lastErrorHash === errorHash && event.retryCount >= 2) {
           await this.eventRepository.markPoisoned(event.id, errorHash);
         } else {
@@ -136,6 +157,12 @@ export class DeliveryService {
         latencyMs: latency,
         createdAt: Date.now(),
       });
+
+      const failCount = await this.webhookRepository.incrementConsecutiveFailures(endpoint.id, event.projectId);
+      if (failCount >= 20 && this.db) {
+        const auditService = new AuditService(this.db);
+        await auditService.log("WEBHOOK_DISABLED", "system", event.projectId);
+      }
 
       if (event.lastErrorHash === errorHash && event.retryCount >= 2) {
         await this.eventRepository.markPoisoned(event.id, errorHash);

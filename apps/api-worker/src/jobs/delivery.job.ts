@@ -20,7 +20,7 @@ export async function runDeliveryJob(env: any) {
   const webhookRepo = new WebhookRepository(db);
   const rateLimitService = new RateLimitService(env.CACHE);
 
-  const service = new DeliveryService(deliveryRepo, eventRepo, webhookRepo);
+  const service = new DeliveryService(deliveryRepo, eventRepo, webhookRepo, db);
 
   const events = await eventRepo.getDeliverableEvents();
 

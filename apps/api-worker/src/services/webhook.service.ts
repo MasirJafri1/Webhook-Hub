@@ -11,6 +11,7 @@ export class WebhookService {
       eventFilters?: string[];
       payloadTransform?: Record<string, unknown>;
       version?: string;
+      customHeaders?: Record<string, string>;
     },
     projectId: string,
   ) {
@@ -33,6 +34,10 @@ export class WebhookService {
       createdAt: Date.now(),
       deletedAt: null,
       requestsPerMinute: payload.requestsPerMinute,
+      customHeaders: payload.customHeaders
+        ? JSON.stringify(payload.customHeaders)
+        : null,
+      consecutiveFailures: 0,
     };
 
     return this.repository.create(webhook);

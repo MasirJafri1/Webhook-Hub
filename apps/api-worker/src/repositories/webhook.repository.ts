@@ -83,4 +83,39 @@ export class WebhookRepository {
       );
     return newSecret;
   }
+
+  async incrementConsecutiveFailures(id: string, projectId: string) {
+    const webhook = await this.findById(id, projectId);
+    if (!webhook) return 0;
+    const count = (webhook.consecutiveFailures ?? 0) + 1;
+
+    const updates: any = { consecutiveFailures: count };
+    if (count >= 20) {
+      updates.active = false;
+    }
+
+    await this.db
+      .update(webhookEndpoints)
+      .set(updates)
+      .where(
+        and(
+          eq(webhookEndpoints.id, id),
+          eq(webhookEndpoints.projectId, projectId),
+        ),
+      );
+
+    return count;
+  }
+
+  async resetConsecutiveFailures(id: string, projectId: string) {
+    await this.db
+      .update(webhookEndpoints)
+      .set({ consecutiveFailures: 0 })
+      .where(
+        and(
+          eq(webhookEndpoints.id, id),
+          eq(webhookEndpoints.projectId, projectId),
+        ),
+      );
+  }
 }
