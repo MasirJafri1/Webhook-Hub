@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import DashboardPage from "./pages/DashboardPage";
@@ -6,8 +7,17 @@ import EventsPage from "./pages/EventsPage";
 import DeliveriesPage from "./pages/DeliveriesPage";
 import DeadLetterPage from "./pages/DeadLetterPage";
 import MetricsPage from "./pages/MetricsPage";
+import LoginPage from "./pages/LoginPage";
 
 export default function App() {
+  const [apiKey, setApiKey] = useState<string | null>(
+    localStorage.getItem("whpk_api_key")
+  );
+
+  if (!apiKey) {
+    return <LoginPage onLoginSuccess={(key) => setApiKey(key)} />;
+  }
+
   return (
     <MainLayout>
       <Routes>
