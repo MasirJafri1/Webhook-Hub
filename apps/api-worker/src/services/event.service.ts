@@ -23,6 +23,9 @@ export class EventService {
       eventType: payload.eventType,
       payload: JSON.stringify(payload.payload),
       status: "pending",
+      retryCount: 0,
+      nextRetryAt: null,
+      lastAttemptAt: null,
       createdAt: Date.now(),
     };
 

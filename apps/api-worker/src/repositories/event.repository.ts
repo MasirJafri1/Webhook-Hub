@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, lte, or } from "drizzle-orm";
 import { events } from "../db/schema";
 
 export class EventRepository {
@@ -18,21 +18,52 @@ export class EventRepository {
     return this.db.select().from(events);
   }
 
-  async getPendingEvents() {
-    return this.db.select().from(events).where(eq(events.status, "pending"));
+  async getDeliverableEvents() {
+    const now = Date.now();
+    return this.db
+      .select()
+      .from(events)
+      .where(
+        or(
+          eq(events.status, "pending"),
+          and(eq(events.status, "retrying"), lte(events.nextRetryAt, now)),
+        ),
+      );
   }
 
   async markDelivered(id: string) {
     return this.db
       .update(events)
-      .set({ status: "delivered" })
+      .set({
+        status: "delivered",
+        nextRetryAt: null,
+      })
       .where(eq(events.id, id));
   }
 
-  async markFailed(id: string) {
+  async scheduleRetry(
+    eventId: string,
+    retryCount: number,
+    nextRetryAt: number,
+  ) {
     return this.db
       .update(events)
-      .set({ status: "failed" })
-      .where(eq(events.id, id));
+      .set({
+        status: "retrying",
+        retryCount,
+        nextRetryAt,
+        lastAttemptAt: Date.now(),
+      })
+      .where(eq(events.id, eventId));
+  }
+
+  async markDead(eventId: string) {
+    return this.db
+      .update(events)
+      .set({
+        status: "dead",
+        lastAttemptAt: Date.now(),
+      })
+      .where(eq(events.id, eventId));
   }
 }

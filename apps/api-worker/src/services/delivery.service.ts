@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import { RETRY_DELAYS } from "../constants/retry-policy";
 
 export class DeliveryService {
   constructor(
@@ -7,11 +8,19 @@ export class DeliveryService {
     private webhookRepository: any,
   ) {}
 
+  private getNextRetry(retryCount: number) {
+    const delay = RETRY_DELAYS[retryCount];
+    if (!delay) {
+      return null;
+    }
+    return Date.now() + delay * 1000;
+  }
+
   async deliver(event: any) {
     const endpoint = await this.webhookRepository.findById(event.endpointId);
 
     if (!endpoint) {
-      await this.eventRepository.markFailed(event.id);
+      await this.eventRepository.markDead(event.id);
       return;
     }
 
@@ -42,10 +51,28 @@ export class DeliveryService {
       if (response.ok) {
         await this.eventRepository.markDelivered(event.id);
       } else {
-        await this.eventRepository.markFailed(event.id);
+        const nextRetry = this.getNextRetry(event.retryCount);
+        if (!nextRetry) {
+          await this.eventRepository.markDead(event.id);
+        } else {
+          await this.eventRepository.scheduleRetry(
+            event.id,
+            event.retryCount + 1,
+            nextRetry,
+          );
+        }
       }
     } catch (error) {
-      await this.eventRepository.markFailed(event.id);
+      const nextRetry = this.getNextRetry(event.retryCount);
+      if (!nextRetry) {
+        await this.eventRepository.markDead(event.id);
+      } else {
+        await this.eventRepository.scheduleRetry(
+          event.id,
+          event.retryCount + 1,
+          nextRetry,
+        );
+      }
 
       await this.deliveryRepository.create({
         id: nanoid(),

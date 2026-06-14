@@ -1,3 +1,5 @@
+import { eq } from "drizzle-orm";
+import { events } from "../db/schema";
 import type { Env } from "../types/env";
 import { CreateEventSchema } from "../schemas/event.schema";
 import { getDb } from "../db/client";
@@ -39,6 +41,26 @@ export const registerEventRoutes = (router: any) => {
       }
     });
     return json(formattedEvents);
+  });
+
+  router.get("/api/v1/events/dead", async (_request: any, env: Env) => {
+    const db = getDb(env);
+    const rows = await db
+      .select()
+      .from(events)
+      .where(eq(events.status, "dead"));
+
+    const formattedRows = rows.map((event: any) => {
+      try {
+        return {
+          ...event,
+          payload: JSON.parse(event.payload),
+        };
+      } catch {
+        return event;
+      }
+    });
+    return json(formattedRows);
   });
 
   router.get("/api/v1/events/:id", async (request: any, env: Env) => {

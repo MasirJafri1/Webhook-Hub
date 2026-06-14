@@ -12,7 +12,7 @@ export async function runDeliveryJob(env: any) {
 
   const service = new DeliveryService(deliveryRepo, eventRepo, webhookRepo);
 
-  const events = await eventRepo.getPendingEvents();
+  const events = await eventRepo.getDeliverableEvents();
 
   for (const event of events) {
     await service.deliver(event);

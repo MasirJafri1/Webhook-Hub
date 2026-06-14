@@ -29,6 +29,12 @@ export const events = sqliteTable("events", {
 
   status: text("status").notNull(),
 
+  retryCount: integer("retry_count").notNull(),
+
+  nextRetryAt: integer("next_retry_at"),
+
+  lastAttemptAt: integer("last_attempt_at"),
+
   createdAt: integer("created_at").notNull(),
 });
 

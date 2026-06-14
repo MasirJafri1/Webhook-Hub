@@ -1,0 +1,3 @@
+ALTER TABLE events ADD COLUMN retry_count INTEGER DEFAULT 0;
+ALTER TABLE events ADD COLUMN next_retry_at INTEGER;
+ALTER TABLE events ADD COLUMN last_attempt_at INTEGER;
