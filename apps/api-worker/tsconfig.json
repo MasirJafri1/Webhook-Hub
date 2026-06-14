@@ -8,5 +8,6 @@
       "@cloudflare/workers-types"
     ],
     "skipLibCheck": true
-  }
+  },
+  "exclude": ["node_modules", "dist"]
 }

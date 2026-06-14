@@ -1,5 +1,2 @@
-import type { Env } from "../types/env"
-
-export const getDb = (env: Env) => {
-  return env.DB
-}
+export * from "./client"
+export * from "./schema"

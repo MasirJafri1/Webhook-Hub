@@ -1,0 +1,67 @@
+import type { Env } from "../types/env"
+import { CreateWebhookSchema } from "../schemas/webhook.schema"
+import { getDb } from "../db/client"
+import { WebhookRepository } from "../repositories/webhook.repository"
+import { WebhookService } from "../services/webhook.service"
+import { json } from "../utils/response"
+
+export const registerWebhookRoutes = (router: any) => {
+  router.post(
+    "/api/v1/webhooks",
+    async (
+      request: Request,
+      env: Env
+    ) => {
+      const body = await request.json()
+      const validated = CreateWebhookSchema.parse(body)
+      const db = getDb(env)
+      const repository = new WebhookRepository(db)
+      const service = new WebhookService(repository)
+      const result = await service.createWebhook(validated)
+      return json(result, 201)
+    }
+  )
+
+  router.get(
+    "/api/v1/webhooks",
+    async (
+      _request: any,
+      env: Env
+    ) => {
+      const db = getDb(env)
+      const repository = new WebhookRepository(db)
+      const result = await repository.findAll()
+      return json(result)
+    }
+  )
+
+  router.get(
+    "/api/v1/webhooks/:id",
+    async (
+      request: any,
+      env: Env
+    ) => {
+      const id = request.params.id
+      const db = getDb(env)
+      const repository = new WebhookRepository(db)
+      const result = await repository.findById(id)
+      return json(result)
+    }
+  )
+
+  router.delete(
+    "/api/v1/webhooks/:id",
+    async (
+      request: any,
+      env: Env
+    ) => {
+      const id = request.params.id
+      const db = getDb(env)
+      const repository = new WebhookRepository(db)
+      await repository.softDelete(id)
+      return json({
+        success: true
+      })
+    }
+  )
+}

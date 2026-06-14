@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate": "wrangler d1 execute webhook-platform-db --local --file=drizzle/0001_webhooks.sql"
   },
   "dependencies": {
     "@libsql/client": "^0.15.0",
     "drizzle-orm": "^0.45.2",
+    "drizzle-zod": "^0.8.3",
     "itty-router": "^5.0.18",
+    "nanoid": "^5.1.11",
     "zod": "^4.1.0"
   },
   "devDependencies": {
