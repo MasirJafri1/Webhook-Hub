@@ -9,6 +9,21 @@ export class EventRepository {
     return data;
   }
 
+  async acquireLock(id: string) {
+    const result = await this.db
+      .update(events)
+      .set({ status: "processing" })
+      .where(
+        and(
+          eq(events.id, id),
+          or(eq(events.status, "pending"), eq(events.status, "retrying"))
+        )
+      );
+    const changes = result.meta?.changes ?? result.changes ?? 0;
+    return changes > 0;
+  }
+
+
   async findById(id: string, projectId: string) {
     const rows = await this.db
       .select()

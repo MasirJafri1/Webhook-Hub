@@ -10,12 +10,13 @@ import { json } from "../utils/response";
 import { DeliveryRepository } from "../repositories/delivery.repository";
 import { authenticate } from "../middleware/auth";
 import { AuditService } from "../services/audit.service";
+import { runDeliveryJob } from "../jobs/delivery.job";
 
 export const registerEventRoutes = (router: any) => {
   router.post(
     "/api/v1/events",
     authenticate,
-    async (request: any, env: Env) => {
+    async (request: any, env: Env, ctx: ExecutionContext) => {
       try {
         const body = await request.json();
         const validated = CreateEventSchema.parse(body);
@@ -32,6 +33,12 @@ export const registerEventRoutes = (router: any) => {
         try {
           result.payload = JSON.parse(result.payload);
         } catch {}
+
+        ctx.waitUntil(
+          runDeliveryJob(env).catch((e) =>
+            console.error("Instant background delivery failed:", e)
+          )
+        );
 
         return json(result, 201);
       } catch (err: any) {
@@ -157,7 +164,7 @@ export const registerEventRoutes = (router: any) => {
   router.post(
     "/api/v1/events/replay-all",
     authenticate,
-    async (request: any, env: Env) => {
+    async (request: any, env: Env, ctx: ExecutionContext) => {
       const db = getDb(env);
       const repository = new EventRepository(db);
       await repository.replayAllDead(request.projectId);
@@ -169,6 +176,12 @@ export const registerEventRoutes = (router: any) => {
         `api_key:${request.apiKeyName || "unnamed"}`;
       await auditService.log("EVENT_REPLAYED", actor, request.projectId);
 
+      ctx.waitUntil(
+        runDeliveryJob(env).catch((e) =>
+          console.error("Replay-all background delivery failed:", e)
+        )
+      );
+
       return json({ success: true });
     },
   );
@@ -176,7 +189,7 @@ export const registerEventRoutes = (router: any) => {
   router.post(
     "/api/v1/events/replay-window",
     authenticate,
-    async (request: any, env: Env) => {
+    async (request: any, env: Env, ctx: ExecutionContext) => {
       const body: any = await request.json();
       if (!body.from || !body.to) {
         return json({ error: "from and to dates are required" }, 400);
@@ -200,6 +213,12 @@ export const registerEventRoutes = (router: any) => {
         `api_key:${request.apiKeyName || "unnamed"}`;
       await auditService.log("EVENT_REPLAY_WINDOW", actor, request.projectId);
 
+      ctx.waitUntil(
+        runDeliveryJob(env).catch((e) =>
+          console.error("Replay-window background delivery failed:", e)
+        )
+      );
+
       return json({ success: true, from: body.from, to: body.to });
     },
   );
@@ -221,7 +240,7 @@ export const registerEventRoutes = (router: any) => {
   router.post(
     "/api/v1/events/:id/replay",
     authenticate,
-    async (request: any, env: Env) => {
+    async (request: any, env: Env, ctx: ExecutionContext) => {
       const db = getDb(env);
       const repository = new EventRepository(db);
 
@@ -242,6 +261,12 @@ export const registerEventRoutes = (router: any) => {
         request.headers.get("x-member-email") ||
         `api_key:${request.apiKeyName || "unnamed"}`;
       await auditService.log("EVENT_REPLAYED", actor, request.projectId);
+
+      ctx.waitUntil(
+        runDeliveryJob(env).catch((e) =>
+          console.error("Replay background delivery failed:", e)
+        )
+      );
 
       return json({ success: true });
     },

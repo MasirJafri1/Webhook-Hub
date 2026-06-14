@@ -2,7 +2,6 @@
   "name": "webhook-platform-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-14",
-
   "d1_databases": [
     {
       "binding": "DB",
@@ -10,7 +9,6 @@
       "database_id": "REPLACE_LATER"
     }
   ],
-
   "kv_namespaces": [
     {
       "binding": "CACHE",
@@ -21,21 +19,5 @@
     "crons": [
       "* * * * *"
     ]
-  },
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "EVENT_LOCK",
-        "class_name": "EventLock"
-      }
-    ]
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_classes": [
-        "EventLock"
-      ]
-    }
-  ]
+  }
 }

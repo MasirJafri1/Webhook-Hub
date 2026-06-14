@@ -9,7 +9,8 @@ export async function runRetentionJob(env: any) {
   const allProjects = await db.select().from(projects);
 
   for (const project of allProjects) {
-    const retentionDays = project.retentionDays ?? 30;
+    // Cap log retention to at most 7 days to fit under Cloudflare D1 free storage limits.
+    const retentionDays = Math.min(project.retentionDays ?? 30, 7);
     const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
 
     // Delete old deliveries (for events belonging to this project)

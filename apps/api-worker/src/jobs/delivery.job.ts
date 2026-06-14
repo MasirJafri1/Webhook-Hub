@@ -64,20 +64,11 @@ export async function runDeliveryJob(env: any) {
         continue;
       }
 
-      // Durable Object lock (if available)
-      if (env.EVENT_LOCK) {
-        try {
-          const lockId = env.EVENT_LOCK.idFromName(event.id);
-          const stub = env.EVENT_LOCK.get(lockId);
-          const lockRes = await stub.fetch(new Request("https://lock/acquire"));
-          const lockData: any = await lockRes.json();
-          if (!lockData.acquired) {
-            console.log(`Event ${event.id} already locked. Skipping.`);
-            continue;
-          }
-        } catch {
-          // DO not available — proceed without lock
-        }
+      // Acquire D1 status-update lock
+      const acquired = await eventRepo.acquireLock(event.id);
+      if (!acquired) {
+        console.log(`Event ${event.id} already locked. Skipping.`);
+        continue;
       }
 
       deliverables.push(event);
@@ -87,16 +78,8 @@ export async function runDeliveryJob(env: any) {
       deliverables.map(async (event: any) => {
         try {
           await service.deliver(event);
-        } finally {
-          if (env.EVENT_LOCK) {
-            try {
-              const lockId = env.EVENT_LOCK.idFromName(event.id);
-              const stub = env.EVENT_LOCK.get(lockId);
-              await stub.fetch(new Request("https://lock/release"));
-            } catch {
-              // Ignore release errors
-            }
-          }
+        } catch (e) {
+          console.error(`Error delivering event ${event.id}:`, e);
         }
       }),
     );

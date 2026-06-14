@@ -71,7 +71,6 @@ registerDeliveryRoutes(router);
 registerMetricsRoutes(router);
 registerMultitenancyRoutes(router);
 
-export { EventLock } from "./durable/event-lock";
 
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) => {
