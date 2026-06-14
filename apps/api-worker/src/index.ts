@@ -4,6 +4,7 @@ import { versionHandler } from "./routes/version";
 import { registerWebhookRoutes } from "./routes/webhooks";
 import { registerEventRoutes } from "./routes/events";
 import { registerDeliveryRoutes } from "./routes/deliveries";
+import { registerMetricsRoutes } from "./routes/metrics";
 import { runDeliveryJob } from "./jobs/delivery.job";
 import type { Env } from "./types/env";
 
@@ -15,6 +16,7 @@ router.get("/version", () => versionHandler());
 registerWebhookRoutes(router);
 registerEventRoutes(router);
 registerDeliveryRoutes(router);
+registerMetricsRoutes(router);
 
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) => {

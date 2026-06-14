@@ -7,6 +7,7 @@ import { EventRepository } from "../repositories/event.repository";
 import { WebhookRepository } from "../repositories/webhook.repository";
 import { EventService } from "../services/event.service";
 import { json } from "../utils/response";
+import { DeliveryRepository } from "../repositories/delivery.repository";
 
 export const registerEventRoutes = (router: any) => {
   router.post("/api/v1/events", async (request: Request, env: Env) => {
@@ -61,6 +62,13 @@ export const registerEventRoutes = (router: any) => {
       }
     });
     return json(formattedRows);
+  });
+
+  router.get("/api/v1/events/:id/timeline", async (request: any, env: Env) => {
+    const db = getDb(env);
+    const repository = new DeliveryRepository(db);
+    const result = await repository.findByEventId(request.params.id);
+    return json(result);
   });
 
   router.get("/api/v1/events/:id", async (request: any, env: Env) => {

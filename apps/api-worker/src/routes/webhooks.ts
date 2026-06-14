@@ -4,6 +4,7 @@ import { getDb } from "../db/client";
 import { WebhookRepository } from "../repositories/webhook.repository";
 import { WebhookService } from "../services/webhook.service";
 import { json } from "../utils/response";
+import { MetricsRepository } from "../repositories/metrics.repository";
 
 export const registerWebhookRoutes = (router: any) => {
   router.post("/api/v1/webhooks", async (request: Request, env: Env) => {
@@ -60,4 +61,11 @@ export const registerWebhookRoutes = (router: any) => {
       });
     },
   );
+
+  router.get("/api/v1/webhooks/:id/metrics", async (request: any, env: Env) => {
+    const db = getDb(env);
+    const repository = new MetricsRepository(db);
+    const result = await repository.getEndpointMetrics(request.params.id);
+    return json(result);
+  });
 };

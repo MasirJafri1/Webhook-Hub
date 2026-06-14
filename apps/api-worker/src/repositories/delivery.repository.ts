@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { deliveries } from "../db/schema";
 
 export class DeliveryRepository {
@@ -10,5 +11,12 @@ export class DeliveryRepository {
 
   async findAll() {
     return this.db.select().from(deliveries);
+  }
+
+  async findByEventId(eventId: string) {
+    return this.db
+      .select()
+      .from(deliveries)
+      .where(eq(deliveries.eventId, eventId));
   }
 }
