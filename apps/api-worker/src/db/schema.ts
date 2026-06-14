@@ -7,7 +7,11 @@ export const webhookEndpoints = sqliteTable("webhook_endpoints", {
 
   url: text("url").notNull(),
 
-  secret: text("secret").notNull(),
+  currentSecret: text("current_secret").notNull(),
+
+  previousSecret: text("previous_secret"),
+
+  secretRotatedAt: integer("secret_rotated_at"),
 
   active: integer("active", {
     mode: "boolean",

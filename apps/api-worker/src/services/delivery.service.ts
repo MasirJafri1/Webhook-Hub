@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { RETRY_DELAYS } from "../constants/retry-policy";
+import { createSignature } from "../utils/signature";
 
 export class DeliveryService {
   constructor(
@@ -27,10 +28,21 @@ export class DeliveryService {
     const started = Date.now();
 
     try {
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const signature = await createSignature(
+        endpoint.currentSecret,
+        timestamp,
+        event.id,
+        event.payload,
+      );
+
       const response = await fetch(endpoint.url, {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          "x-webhook-id": event.id,
+          "x-webhook-timestamp": timestamp,
+          "x-webhook-signature": signature,
         },
         body: event.payload,
       });

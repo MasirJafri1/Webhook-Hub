@@ -41,4 +41,21 @@ export class WebhookRepository {
       .where(eq(webhookEndpoints.id, id));
     return rows.length > 0;
   }
+
+  async rotateSecret(id: string) {
+    const webhook = await this.findById(id);
+    if (!webhook) {
+      throw new Error("Webhook not found");
+    }
+    const newSecret = crypto.randomUUID();
+    await this.db
+      .update(webhookEndpoints)
+      .set({
+        previousSecret: webhook.currentSecret,
+        currentSecret: newSecret,
+        secretRotatedAt: Date.now(),
+      })
+      .where(eq(webhookEndpoints.id, id));
+    return newSecret;
+  }
 }

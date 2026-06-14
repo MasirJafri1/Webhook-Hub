@@ -40,4 +40,24 @@ export const registerWebhookRoutes = (router: any) => {
       success: true,
     });
   });
+
+  router.post(
+    "/api/v1/webhooks/:id/rotate-secret",
+    async (request: any, env: Env) => {
+      const db = getDb(env);
+      const repository = new WebhookRepository(db);
+      const secret = await repository.rotateSecret(request.params.id);
+      return json({ secret });
+    },
+  );
+
+  router.get(
+    "/api/v1/webhooks/:id/signing-info",
+    async (_request: any, _env: Env) => {
+      return json({
+        algorithm: "HMAC-SHA256",
+        headers: ["x-webhook-id", "x-webhook-timestamp", "x-webhook-signature"],
+      });
+    },
+  );
 };

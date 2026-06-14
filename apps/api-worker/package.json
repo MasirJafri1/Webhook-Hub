@@ -6,7 +6,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "migrate": "wrangler d1 execute webhook-platform-db --local --file=drizzle/0001_webhooks.sql"
+    "migrate": "wrangler d1 execute webhook-platform-db --local --file=drizzle/0001_webhooks.sql",
+    "test-flow": "node scratch/test-flow.js"
   },
   "dependencies": {
     "@libsql/client": "^0.15.0",
