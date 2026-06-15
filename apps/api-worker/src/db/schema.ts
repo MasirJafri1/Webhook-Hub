@@ -86,3 +86,13 @@ export const deliveries = sqliteTable("deliveries", {
   latencyMs: integer("latency_ms"),
   createdAt: integer("created_at").notNull(),
 });
+
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role").default("user").notNull(), // 'user', 'super_admin'
+  approved: integer("approved", { mode: "boolean" }).default(false).notNull(),
+  createdAt: integer("created_at").notNull(),
+});
+

@@ -1,45 +1,81 @@
 import React, { useState } from "react";
-import { KeyRound, ShieldAlert, Sparkles, Loader2 } from "lucide-react";
+import { KeyRound, ShieldAlert, Sparkles, Loader2, Mail, Lock } from "lucide-react";
 import axios from "axios";
+import { Link } from "react-router-dom";
+import { api } from "../services/api";
 
 interface LoginPageProps {
   onLoginSuccess: (apiKey: string) => void;
 }
 
 export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
-  const [apiKey, setApiKey] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
 
-  const handleConnect = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKey.trim()) return;
+    if (!email || !password) return;
     setIsLoading(true);
     setError("");
 
-    // Minimal validation to verify format
-    if (!apiKey.startsWith("whpk_")) {
-      setError("Invalid API Key format. Should start with 'whpk_'.");
-      setIsLoading(false);
-      return;
-    }
+    try {
+      const res = await api.post<{
+        success: boolean;
+        token: string;
+        user: { id: string; email: string; role: string };
+      }>("/auth/login", {
+        email: email.trim(),
+        password,
+      });
 
-    localStorage.setItem("whpk_api_key", apiKey.trim());
-    onLoginSuccess(apiKey.trim());
+      const data = res.data;
+      localStorage.setItem("whpk_api_key", data.token);
+      localStorage.setItem("whpk_user_role", data.user.role);
+      localStorage.setItem("whpk_user_email", data.user.email);
+      
+      onLoginSuccess(data.token);
+    } catch (err: any) {
+      console.error(err);
+      setError(
+        err.response?.data?.message || 
+        err.response?.data?.error || 
+        "Invalid email/password or server connection failed."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSeedKey = async () => {
+  const handleSeedAdmin = async () => {
     setIsSeeding(true);
     setError("");
     try {
-      const res = await axios.post<{ apiKey: string }>("http://localhost:8790/test/seed");
-      const key = res.data.apiKey;
-      localStorage.setItem("whpk_api_key", key);
-      onLoginSuccess(key);
-    } catch (err) {
+      const baseApiUrl = (import.meta.env.VITE_API_URL || "http://localhost:8790/api/v1").replace("/api/v1", "");
+      // 1. Seed database with test projects and default Super Admin user credentials
+      await axios.post(`${baseApiUrl}/test/seed`);
+
+      // 2. Perform regular auth login with the seeded admin account to generate production JWT token
+      const loginRes = await api.post<{
+        success: boolean;
+        token: string;
+        user: { id: string; email: string; role: string };
+      }>("/auth/login", {
+        email: "admin@webhook.com",
+        password: "AdminSecurePassword123",
+      });
+
+      const data = loginRes.data;
+      localStorage.setItem("whpk_api_key", data.token);
+      localStorage.setItem("whpk_user_role", data.user.role);
+      localStorage.setItem("whpk_user_email", data.user.email);
+      
+      onLoginSuccess(data.token);
+    } catch (err: any) {
       console.error(err);
-      setError("Failed to seed a dev credential from the API worker. Make sure your local API worker is running.");
+      setError("Failed to seed and authenticate Super Admin user. Make sure your local API worker is running.");
     } finally {
       setIsSeeding(false);
     }
@@ -70,19 +106,43 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
         </div>
 
         {/* Action Form */}
-        <form onSubmit={handleConnect} className="flex flex-col gap-4">
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Project API Key
+              Email Address
             </label>
-            <input
-              type="password"
-              placeholder="whpk_live_..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="w-full bg-white/[0.03] border border-white/[0.08] px-4 py-3 rounded-lg text-white text-sm tracking-wide transition-all focus:outline-none focus:border-indigo-500 focus:bg-white/[0.06] placeholder-slate-600"
-              required
-            />
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                <Mail size={16} />
+              </span>
+              <input
+                type="email"
+                placeholder="developer@yourdomain.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-white/[0.03] border border-white/[0.08] pl-10 pr-4 py-3 rounded-lg text-white text-sm tracking-wide transition-all focus:outline-none focus:border-indigo-500 focus:bg-white/[0.06] placeholder-slate-600"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Password
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                <Lock size={16} />
+              </span>
+              <input
+                type="password"
+                placeholder="••••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-white/[0.03] border border-white/[0.08] pl-10 pr-4 py-3 rounded-lg text-white text-sm tracking-wide transition-all focus:outline-none focus:border-indigo-500 focus:bg-white/[0.06] placeholder-slate-600"
+                required
+              />
+            </div>
           </div>
 
           {error && (
@@ -98,9 +158,16 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             className="w-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-semibold py-3 px-4 rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(99,102,241,0.35)] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
           >
             {isLoading ? <Loader2 size={16} className="animate-spin" /> : null}
-            <span>Connect Dashboard</span>
+            <span>Login</span>
           </button>
         </form>
+
+        <div className="text-center text-xs text-slate-400">
+          Need an account?{" "}
+          <Link to="/signup" className="text-indigo-400 hover:underline font-semibold">
+            Sign up here
+          </Link>
+        </div>
 
         {/* Divider */}
         <div className="flex items-center gap-3">
@@ -114,7 +181,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
         {/* Seed Credentials Button */}
         <button
           type="button"
-          onClick={handleSeedKey}
+          onClick={handleSeedAdmin}
           disabled={isLoading || isSeeding}
           className="w-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white font-medium py-3 px-4 rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-all duration-200"
         >
@@ -123,11 +190,11 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
           ) : (
             <Sparkles size={16} className="text-cyan-400" />
           )}
-          <span>Seed Test Credentials & Login</span>
+          <span>Seed & Login as Admin</span>
         </button>
 
         <p className="text-[10px] text-center text-slate-500 leading-normal">
-          Clicking "Seed Test Credentials" sends a query to your local D1 database to instantiate a dummy organization, project, and developer token for testing.
+          Clicking "Seed & Login as Admin" initializes the default Super Admin (<code className="text-indigo-400">admin@webhook.com</code> / <code className="text-indigo-400">AdminSecurePassword123</code>) in D1 and logs you in instantly.
         </p>
 
       </div>

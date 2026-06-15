@@ -8,10 +8,13 @@ import { registerDeliveryRoutes } from "./routes/deliveries";
 import { registerMetricsRoutes } from "./routes/metrics";
 import { registerMultitenancyRoutes } from "./routes/multitenancy";
 import { registerDocsRoutes } from "./routes/docs";
+import { registerAuthRoutes } from "./routes/auth";
+import { registerAdminRoutes } from "./routes/admin";
 import { runDeliveryJob } from "./jobs/delivery.job";
 import { runRetentionJob } from "./jobs/retention.job";
 import type { Env } from "./types/env";
 import { sha256 } from "./utils/hash";
+import { hashPassword } from "./utils/crypto";
 
 const router = Router();
 
@@ -30,6 +33,12 @@ router.options("*", () => {
 router.get("/health", () => healthHandler());
 router.get("/version", () => versionHandler());
 
+router.all("/test/*", (request: Request, env: Env) => {
+  if (env.ENVIRONMENT === "production") {
+    return new Response("Not Found", { status: 404 });
+  }
+});
+
 router.post("/test/reset-retry", async (request: Request, env: Env) => {
   await env.DB.prepare("UPDATE events SET next_retry_at = 0").run();
   return new Response("Ok");
@@ -40,6 +49,7 @@ router.post("/test/seed", async (request: Request, env: Env) => {
   await db.prepare("DELETE FROM api_keys WHERE id = 'key_seed_dev'").run();
   await db.prepare("DELETE FROM projects WHERE id = 'proj_seed_dev'").run();
   await db.prepare("DELETE FROM organizations WHERE id = 'org_seed_dev'").run();
+  await db.prepare("DELETE FROM users WHERE id = 'usr_seed_admin'").run();
 
   const orgId = "org_seed_dev";
   const projId = "proj_seed_dev";
@@ -60,7 +70,13 @@ router.post("/test/seed", async (request: Request, env: Env) => {
     .bind(keyId, projId, hashedKey, "Seed Dev Key", 1, now)
     .run();
 
-  return new Response(JSON.stringify({ apiKey: rawKey }), {
+  // Seed default Super Admin user
+  const adminPasswordHash = await hashPassword("AdminSecurePassword123");
+  await db.prepare("INSERT INTO users (id, email, password_hash, role, approved, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind("usr_seed_admin", "admin@webhook.com", adminPasswordHash, "super_admin", 1, now)
+    .run();
+
+  return new Response(JSON.stringify({ apiKey: rawKey, adminEmail: "admin@webhook.com", adminPassword: "AdminSecurePassword123" }), {
     headers: {
       "content-type": "application/json",
       "access-control-allow-origin": "*",
@@ -84,7 +100,9 @@ router.post("/test/reset-db", async (request: Request, env: Env) => {
   await env.DB.prepare("DELETE FROM api_keys").run();
   await env.DB.prepare("DELETE FROM projects").run();
   await env.DB.prepare("DELETE FROM organizations").run();
+  await env.DB.prepare("DELETE FROM members").run();
   await env.DB.prepare("DELETE FROM audit_logs").run();
+  await env.DB.prepare("DELETE FROM users").run();
   return new Response("Ok");
 });
 
@@ -106,6 +124,8 @@ registerDeliveryRoutes(router);
 registerMetricsRoutes(router);
 registerMultitenancyRoutes(router);
 registerDocsRoutes(router);
+registerAuthRoutes(router);
+registerAdminRoutes(router);
 
 
 export default {

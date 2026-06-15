@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY NOT NULL,
+  email TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT DEFAULT 'user' NOT NULL,
+  approved INTEGER DEFAULT 0 NOT NULL,
+  created_at INTEGER NOT NULL
+);

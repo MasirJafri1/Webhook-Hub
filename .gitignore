@@ -6,3 +6,4 @@ dist
 terraform.tfstate
 terraform.tfstate.backup
 .terraform
+test-phase*.js

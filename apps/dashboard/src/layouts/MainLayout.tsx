@@ -9,6 +9,7 @@ import {
   BarChart3,
   Terminal,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 
 interface SidebarItem {
@@ -28,6 +29,19 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const role = localStorage.getItem("whpk_user_role");
+  const emailVal = localStorage.getItem("whpk_user_email") || "developer@domain.com";
+  const isAdmin = role === "super_admin";
+
+  const sidebarItems = [...SIDEBAR_ITEMS];
+  if (isAdmin) {
+    sidebarItems.push({ name: "Admin Panel", path: "/admin", icon: ShieldCheck });
+  }
+
+  const namePart = emailVal.split("@")[0];
+  const initials = namePart.substring(0, 2).toUpperCase() || "US";
+  const roleDisplay = isAdmin ? "Super Admin" : "Developer";
+  const nameDisplay = emailVal === "admin@webhook.com" ? "Super Admin" : namePart.charAt(0).toUpperCase() + namePart.slice(1);
 
   return (
     <div className="flex min-h-screen bg-bg-main text-text-main">
@@ -41,7 +55,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <nav className="flex flex-col gap-2 flex-grow">
-          {SIDEBAR_ITEMS.map((item) => {
+          {sidebarItems.map((item) => {
             const Icon = item.icon;
             const isActive =
               item.path === "/"
@@ -72,16 +86,18 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <div className="flex flex-col gap-4 pt-4 border-t border-border-color mt-auto">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-accent-primary to-accent-info rounded-full flex items-center justify-center font-bold text-sm text-white border-2 border-white/10">
-              MJ
+              {initials}
             </div>
             <div className="flex flex-col flex-grow">
-              <p className="text-sm font-semibold text-text-main">Masir Jafri</p>
-              <p className="text-xs text-text-dim">System Architect</p>
+              <p className="text-sm font-semibold text-text-main">{nameDisplay}</p>
+              <p className="text-xs text-text-dim">{roleDisplay}</p>
             </div>
           </div>
           <button
             onClick={() => {
               localStorage.removeItem("whpk_api_key");
+              localStorage.removeItem("whpk_user_role");
+              localStorage.removeItem("whpk_user_email");
               window.location.reload();
             }}
             className="w-full text-left text-xs font-semibold text-text-muted hover:text-red-400 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-500/5 transition-all border-none bg-transparent cursor-pointer"
@@ -96,7 +112,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <main className="flex-grow ml-[260px] flex flex-col min-h-screen">
         <header className="h-[70px] border-b border-border-color px-8 flex items-center justify-between sticky top-0 bg-bg-main/60 backdrop-blur-md z-40">
           <h2 className="text-xl font-bold text-text-main">
-            {SIDEBAR_ITEMS.find((item) =>
+            {sidebarItems.find((item) =>
               item.path === "/"
                 ? location.pathname === "/"
                 : location.pathname.startsWith(item.path)
