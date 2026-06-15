@@ -22,12 +22,12 @@ jobs:
       - name: Install api-worker dependencies
         run: |
           cd apps/api-worker
-          npm ci
+          npm install
 
       - name: Install dashboard dependencies
         run: |
           cd apps/dashboard
-          npm ci
+          npm install
 
       - name: Typecheck Backend (api-worker)
         run: |
@@ -56,7 +56,7 @@ jobs:
       - name: Install api-worker dependencies
         run: |
           cd apps/api-worker
-          npm ci
+          npm install
 
       - name: Deploy Backend API Worker
         uses: cloudflare/wrangler-action@v3
@@ -68,7 +68,7 @@ jobs:
       - name: Install dashboard dependencies
         run: |
           cd apps/dashboard
-          npm ci
+          npm install
 
       - name: Build Dashboard for Production
         env:
