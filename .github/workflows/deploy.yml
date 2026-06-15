@@ -1,0 +1,88 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Build & Test Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install api-worker dependencies
+        run: |
+          cd apps/api-worker
+          npm ci
+
+      - name: Install dashboard dependencies
+        run: |
+          cd apps/dashboard
+          npm ci
+
+      - name: Typecheck Backend (api-worker)
+        run: |
+          cd apps/api-worker
+          npm run typecheck
+
+      - name: Typecheck & Build Frontend (dashboard)
+        run: |
+          cd apps/dashboard
+          npm run build
+
+  deploy:
+    name: Deploy to Cloudflare
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install api-worker dependencies
+        run: |
+          cd apps/api-worker
+          npm ci
+
+      - name: Deploy Backend API Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'apps/api-worker'
+
+      - name: Install dashboard dependencies
+        run: |
+          cd apps/dashboard
+          npm ci
+
+      - name: Build Dashboard for Production
+        env:
+          VITE_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+        run: |
+          cd apps/dashboard
+          npm run build
+
+      - name: Deploy Dashboard to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'apps/dashboard'
+          command: pages deploy dist --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}

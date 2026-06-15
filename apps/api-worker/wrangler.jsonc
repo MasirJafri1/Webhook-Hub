@@ -6,13 +6,14 @@
     {
       "binding": "DB",
       "database_name": "webhook-platform-db",
-      "database_id": "REPLACE_LATER"
+      "database_id": "776b43dd-fb56-4a90-9ee5-02f809b77262",
+      "migrations_dir": "drizzle"
     }
   ],
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "REPLACE_LATER"
+      "id": "c3a024ee73754d328fb1e1237ace43ba"
     }
   ],
   "triggers": {
