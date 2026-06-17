@@ -2,7 +2,7 @@
 
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
 
   /* Custom HSL theme variables for Shadcn Zinc style compatibility */
   --color-bg-main: hsl(240, 10%, 3.9%);          /* Zinc-950 background */
@@ -30,7 +30,17 @@
 @layer base {
   :root {
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-    --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-display: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+
+    /* Theme mappings for Recharts and inline styled metrics elements */
+    --accent-success: hsl(142.1, 70.6%, 45.3%);
+    --accent-error: hsl(0, 84.2%, 60.2%);
+    --accent-warning: hsl(47.9, 95.8%, 53.1%);
+    --accent-info: hsl(240, 5%, 64.9%);
+    --bg-sidebar: hsl(240, 10%, 5.9%);
+    --border-color: hsl(240, 3.7%, 15.9%);
+    --text-main: hsl(0, 0%, 98%);
+    --text-dim: hsl(240, 4%, 46.1%);
   }
 
   body {
@@ -39,6 +49,13 @@
     font-family: var(--font-sans);
     color: hsl(240, 10%, 98%);
     background-color: hsl(240, 10%, 3.9%); /* Solid Zinc-950 background */
+    background-image: 
+      radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.05), transparent 50%),
+      radial-gradient(circle at 0% 100%, rgba(39, 39, 42, 0.2), transparent 40%),
+      linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+    background-attachment: fixed;
     overflow-x: hidden;
   }
 
@@ -72,16 +89,17 @@
    Shadcn UI Card/Panel Utility Styling
    ---------------------------------------------------- */
 @utility glass-panel {
-  background-color: hsl(240, 10%, 5.9%) !important;
+  background-color: hsla(240, 10%, 5.9%, 0.7) !important;
   border: 1px solid hsl(240, 3.7%, 15.9%) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  transition: border-color 0.15s ease !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 
   &:hover {
-    border-color: hsl(240, 3.7%, 25%) !important;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important;
+    border-color: hsl(240, 4%, 28%) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.01) !important;
+    transform: translateY(-2px);
   }
 }

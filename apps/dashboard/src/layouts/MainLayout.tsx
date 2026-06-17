@@ -41,15 +41,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const namePart = emailVal.split("@")[0];
   const initials = namePart.substring(0, 2).toUpperCase() || "US";
   const roleDisplay = isAdmin ? "Super Admin" : "Developer";
-  const nameDisplay = emailVal === "admin@webhook.com" ? "Super Admin" : namePart.charAt(0).toUpperCase() + namePart.slice(1);
+  const nameDisplay = isAdmin ? "Super Admin" : namePart.charAt(0).toUpperCase() + namePart.slice(1);
 
   return (
     <div className="flex min-h-screen bg-zinc-950 text-zinc-50">
       {/* Sidebar */}
-      <aside className="w-[260px] bg-zinc-900 border-r border-zinc-800 flex flex-col p-6 fixed top-0 bottom-0 left-0 z-50">
-        <div className="flex items-center gap-3 px-3 pb-6 border-b border-zinc-800 mb-6">
-          <Terminal className="w-6 h-6 text-zinc-50" />
-          <span className="text-lg font-semibold tracking-tight text-zinc-50">
+      <aside className="w-[260px] bg-zinc-900/55 backdrop-blur-md border-r border-zinc-800/60 flex flex-col p-6 fixed top-0 bottom-0 left-0 z-50">
+        <div className="flex items-center gap-3 px-3 pb-6 border-b border-zinc-800/60 mb-6">
+          <Terminal className="w-5 h-5 text-indigo-400" />
+          <span className="text-lg font-bold tracking-tight text-zinc-50 font-display">
             WebHook Hub
           </span>
         </div>
@@ -66,15 +66,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               <Link
                 key={item.path}
                 to={item.path}
-                className={`group flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                className={`group flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? "text-zinc-50 bg-zinc-800 border border-zinc-700"
-                    : "text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900/50"
+                    ? "text-zinc-50 bg-zinc-800/80 border border-zinc-700/60 shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/30"
                 }`}
               >
                 <Icon
-                  className={`w-4 h-4 transition-transform duration-150 ${
-                    isActive ? "text-zinc-50" : "text-zinc-400 group-hover:text-zinc-50"
+                  className={`w-4 h-4 transition-transform duration-150 group-hover:scale-110 ${
+                    isActive ? "text-indigo-400" : "text-zinc-400 group-hover:text-zinc-200"
                   }`}
                 />
                 <span>{item.name}</span>
@@ -83,14 +83,14 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           })}
         </nav>
 
-        <div className="flex flex-col gap-4 pt-4 border-t border-zinc-800 mt-auto">
+        <div className="flex flex-col gap-4 pt-4 border-t border-zinc-800/60 mt-auto">
           <div className="flex items-center gap-3">
-            <div className="w-8.5 h-8.5 bg-zinc-800 rounded-full flex items-center justify-center font-bold text-xs text-zinc-200 border border-zinc-700">
+            <div className="w-8.5 h-8.5 bg-zinc-800/80 rounded-full flex items-center justify-center font-bold text-xs text-zinc-200 border border-zinc-700/60">
               {initials}
             </div>
             <div className="flex flex-col flex-grow">
               <p className="text-xs font-semibold text-zinc-200">{nameDisplay}</p>
-              <p className="text-[10px] text-zinc-500">{roleDisplay}</p>
+              <p className="text-[10px] text-zinc-500 font-medium">{roleDisplay}</p>
             </div>
           </div>
           <button
@@ -110,8 +110,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       {/* Main Content Area */}
       <main className="flex-grow ml-[260px] flex flex-col min-h-screen">
-        <header className="h-[65px] border-b border-zinc-800 px-8 flex items-center justify-between sticky top-0 bg-zinc-950/60 backdrop-blur-md z-40">
-          <h2 className="text-base font-bold text-zinc-50">
+        <header className="h-[65px] border-b border-zinc-800/60 px-8 flex items-center justify-between sticky top-0 bg-zinc-950/40 backdrop-blur-md z-40">
+          <h2 className="text-base font-bold text-zinc-50 font-display">
             {sidebarItems.find((item) =>
               item.path === "/"
                 ? location.pathname === "/"
