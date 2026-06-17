@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Plus, Webhook as WebhookIcon } from "lucide-react";
 import { useWebhooks } from "../hooks/useWebhooks";
 import WebhookTable from "../components/WebhookTable";
+import { TableSkeleton } from "../components/Loader";
 
 export default function WebhooksPage() {
   const { data: webhooks, isLoading, createWebhook, deleteWebhook, rotateSecret } = useWebhooks();
@@ -32,7 +33,12 @@ export default function WebhooksPage() {
   };
 
   if (isLoading) {
-    return <div className="text-text-muted text-sm p-8">Loading webhook configurations...</div>;
+    return (
+      <div className="flex flex-col gap-8 w-full animate-pulse">
+        <div className="h-32 bg-zinc-900/20 border border-zinc-800/60 rounded-2xl" />
+        <TableSkeleton cols={6} rows={5} />
+      </div>
+    );
   }
 
   return (

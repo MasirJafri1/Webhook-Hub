@@ -13,6 +13,7 @@ import { useMetrics } from "../hooks/useMetrics";
 import { useEvents } from "../hooks/useEvents";
 import StatCard from "../components/StatCard";
 import EventTable from "../components/EventTable";
+import { PageSkeleton } from "../components/Loader";
 import type { Event } from "../types";
 
 export default function DashboardPage() {
@@ -51,7 +52,7 @@ export default function DashboardPage() {
   };
 
   if (isLoadingMetrics || isLoadingEvents) {
-    return <div className="text-text-muted text-sm p-8">Loading dashboard...</div>;
+    return <PageSkeleton />;
   }
 
   const overview = metricsData?.overview || { total: 0, success: 0, failed: 0 };

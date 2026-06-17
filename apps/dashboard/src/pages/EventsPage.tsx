@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Send } from "lucide-react";
 import { useEvents } from "../hooks/useEvents";
 import EventTable from "../components/EventTable";
+import { TableSkeleton } from "../components/Loader";
 import type { Event } from "../types";
 
 export default function EventsPage() {
@@ -10,7 +11,15 @@ export default function EventsPage() {
   const { eventsData, isLoadingEvents, replayEvent } = useEvents(page, limit);
 
   if (isLoadingEvents) {
-    return <div className="text-text-muted text-sm p-8">Loading events stream...</div>;
+    return (
+      <div className="flex flex-col gap-8 w-full">
+        <div className="flex flex-col gap-2 pb-5 border-b border-zinc-800/60 animate-pulse">
+          <div className="h-6 w-48 bg-zinc-800 rounded" />
+          <div className="h-3 w-80 bg-zinc-800/60 rounded mt-1" />
+        </div>
+        <TableSkeleton cols={7} rows={10} />
+      </div>
+    );
   }
 
   // Safe checks: since backend can return array (non-paginated fallback) or object (paginated).

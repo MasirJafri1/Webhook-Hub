@@ -1,13 +1,22 @@
 import React, { useState } from "react";
 import { Activity, Clock, Terminal, Eye, EyeOff } from "lucide-react";
 import { useDeliveries } from "../hooks/useDeliveries";
+import { TableSkeleton } from "../components/Loader";
 
 export default function DeliveriesPage() {
   const { deliveries, isLoadingDeliveries } = useDeliveries();
   const [visibleBodyId, setVisibleBodyId] = useState<string | null>(null);
 
   if (isLoadingDeliveries) {
-    return <div className="text-text-muted text-sm p-8">Loading deliveries logs...</div>;
+    return (
+      <div className="flex flex-col gap-8 w-full">
+        <div className="flex flex-col gap-2 pb-5 border-b border-zinc-800/60 animate-pulse">
+          <div className="h-6 w-48 bg-zinc-800 rounded" />
+          <div className="h-3 w-80 bg-zinc-800/60 rounded mt-1" />
+        </div>
+        <TableSkeleton cols={8} rows={10} />
+      </div>
+    );
   }
 
   const deliveriesList = deliveries || [];

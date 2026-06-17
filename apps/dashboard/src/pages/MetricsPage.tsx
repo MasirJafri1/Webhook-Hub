@@ -5,6 +5,7 @@ import { useMetrics } from "../hooks/useMetrics";
 import { useDeliveries } from "../hooks/useDeliveries";
 import StatCard from "../components/StatCard";
 import MetricTable from "../components/MetricTable";
+import { PageSkeleton } from "../components/Loader";
 import {
   ResponsiveContainer,
   LineChart,
@@ -69,7 +70,7 @@ export default function MetricsPage() {
   };
 
   if (isLoadingMetrics || isLoadingDeliveries) {
-    return <div className="text-text-muted text-sm p-8">Loading analytics & metrics...</div>;
+    return <PageSkeleton />;
   }
 
   // Backend response fallbacks

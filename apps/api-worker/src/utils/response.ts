@@ -3,7 +3,7 @@ export const json = (data: unknown, status = 200): Response => {
     status,
     headers: {
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
       "access-control-allow-headers":
         "content-type, authorization, x-webhook-id, x-webhook-timestamp, x-webhook-signature, idempotency-key",
     },

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AlertOctagon, RefreshCw, Skull, Bug } from "lucide-react";
 import { useEvents } from "../hooks/useEvents";
 import EventTable from "../components/EventTable";
+import { TableSkeleton } from "../components/Loader";
 import type { Event } from "../types";
 
 export default function DeadLetterPage() {
@@ -18,7 +19,12 @@ export default function DeadLetterPage() {
   const [activeTab, setActiveTab] = useState<"dead" | "poisoned">("dead");
 
   if (isLoadingDead || isLoadingPoisoned) {
-    return <div className="text-text-muted text-sm p-8">Loading Dead Letter Queues...</div>;
+    return (
+      <div className="flex flex-col gap-8 w-full animate-pulse">
+        <div className="h-32 bg-zinc-900/20 border border-zinc-800/60 rounded-2xl" />
+        <TableSkeleton cols={7} rows={5} />
+      </div>
+    );
   }
 
   const deadList: Event[] = Array.isArray(deadEvents) ? deadEvents : [];

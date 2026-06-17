@@ -124,4 +124,104 @@ export const registerAdminRoutes = (router: any) => {
       return json({ error: "Internal server error" }, 500);
     }
   });
+
+  // GET all users (User Management)
+  router.get("/api/v1/admin/users", authenticate, async (request: any, env: Env) => {
+    if (!request.user || request.user.role !== "super_admin") {
+      return json({ error: "Forbidden: Super Admin access required" }, 403);
+    }
+
+    try {
+      const db = getDb(env);
+      const allUsers = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          role: users.role,
+          approved: users.approved,
+          createdAt: users.createdAt,
+        })
+        .from(users);
+
+      return json(allUsers);
+    } catch (err: any) {
+      console.error("Admin list all users error:", err);
+      return json({ error: "Internal server error" }, 500);
+    }
+  });
+
+  // DELETE a user
+  router.delete("/api/v1/admin/users/:id", authenticate, async (request: any, env: Env) => {
+    if (!request.user || request.user.role !== "super_admin") {
+      return json({ error: "Forbidden: Super Admin access required" }, 403);
+    }
+
+    const targetUserId = request.params.id;
+    if (targetUserId === request.user.id) {
+      return json({ error: "Cannot delete your own super admin account" }, 400);
+    }
+
+    try {
+      const db = getDb(env);
+      
+      // Get target user email to clean up members table relationship
+      const targetRows = await db.select().from(users).where(eq(users.id, targetUserId));
+      const targetUser = targetRows[0];
+      if (!targetUser) {
+        return json({ error: "User not found" }, 404);
+      }
+
+      // Delete user row
+      await db.delete(users).where(eq(users.id, targetUserId));
+      
+      // Delete member association
+      await db.delete(members).where(eq(members.email, targetUser.email));
+
+      return json({ success: true, message: "User account deleted successfully." });
+    } catch (err: any) {
+      console.error("Admin delete user error:", err);
+      return json({ error: "Internal server error" }, 500);
+    }
+  });
+
+  // PATCH (update) a user's role or approved status
+  router.patch("/api/v1/admin/users/:id", authenticate, async (request: any, env: Env) => {
+    if (!request.user || request.user.role !== "super_admin") {
+      return json({ error: "Forbidden: Super Admin access required" }, 403);
+    }
+
+    const targetUserId = request.params.id;
+    if (targetUserId === request.user.id) {
+      return json({ error: "Cannot edit your own super admin account configuration" }, 400);
+    }
+
+    try {
+      const body = await request.json();
+      const db = getDb(env);
+
+      // Validate inputs
+      const updates: Record<string, any> = {};
+      if (body.role !== undefined) {
+        if (body.role !== "super_admin" && body.role !== "user") {
+          return json({ error: "Invalid role value" }, 400);
+        }
+        updates.role = body.role;
+      }
+      
+      if (body.approved !== undefined) {
+        updates.approved = body.approved;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return json({ error: "No update parameters provided" }, 400);
+      }
+
+      const result = await db.update(users).set(updates).where(eq(users.id, targetUserId));
+      
+      return json({ success: true, message: "User account updated successfully." });
+    } catch (err: any) {
+      console.error("Admin patch user error:", err);
+      return json({ error: "Internal server error" }, 500);
+    }
+  });
 };
