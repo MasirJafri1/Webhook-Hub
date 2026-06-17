@@ -13,8 +13,6 @@ import { registerAdminRoutes } from "./routes/admin";
 import { runDeliveryJob } from "./jobs/delivery.job";
 import { runRetentionJob } from "./jobs/retention.job";
 import type { Env } from "./types/env";
-import { sha256 } from "./utils/hash";
-import { hashPassword } from "./utils/crypto";
 
 const router = Router();
 
@@ -25,7 +23,7 @@ router.options("*", () => {
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
       "access-control-allow-headers":
-        "content-type, x-webhook-id, x-webhook-timestamp, x-webhook-signature, idempotency-key",
+        "content-type, authorization, x-webhook-id, x-webhook-timestamp, x-webhook-signature, idempotency-key",
     },
   });
 });
@@ -42,46 +40,6 @@ router.all("/test/*", (request: Request, env: Env) => {
 router.post("/test/reset-retry", async (request: Request, env: Env) => {
   await env.DB.prepare("UPDATE events SET next_retry_at = 0").run();
   return new Response("Ok");
-});
-
-router.post("/test/seed", async (request: Request, env: Env) => {
-  const db = env.DB;
-  await db.prepare("DELETE FROM api_keys WHERE id = 'key_seed_dev'").run();
-  await db.prepare("DELETE FROM projects WHERE id = 'proj_seed_dev'").run();
-  await db.prepare("DELETE FROM organizations WHERE id = 'org_seed_dev'").run();
-  await db.prepare("DELETE FROM users WHERE id = 'usr_seed_admin'").run();
-
-  const orgId = "org_seed_dev";
-  const projId = "proj_seed_dev";
-  const keyId = "key_seed_dev";
-  const rawKey = "whpk_live_seed_dev_key_abc123";
-  const hashedKey = await sha256(rawKey);
-  const now = Date.now();
-
-  await db.prepare("INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?)")
-    .bind(orgId, "Seed Dev Org", now)
-    .run();
-
-  await db.prepare("INSERT INTO projects (id, organization_id, name, monthly_event_limit, retention_days, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(projId, orgId, "Seed Dev Project", 100000, 30, now)
-    .run();
-
-  await db.prepare("INSERT INTO api_keys (id, project_id, key_hash, name, active, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(keyId, projId, hashedKey, "Seed Dev Key", 1, now)
-    .run();
-
-  // Seed default Super Admin user
-  const adminPasswordHash = await hashPassword("AdminSecurePassword123");
-  await db.prepare("INSERT INTO users (id, email, password_hash, role, approved, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind("usr_seed_admin", "admin@webhook.com", adminPasswordHash, "super_admin", 1, now)
-    .run();
-
-  return new Response(JSON.stringify({ apiKey: rawKey, adminEmail: "admin@webhook.com", adminPassword: "AdminSecurePassword123" }), {
-    headers: {
-      "content-type": "application/json",
-      "access-control-allow-origin": "*",
-    },
-  });
 });
 
 router.get("/test/query-event/:id", async (request: any, env: Env) => {
@@ -130,7 +88,16 @@ registerAdminRoutes(router);
 
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) => {
-    return router.fetch(request, env, ctx);
+    return router.fetch(request, env, ctx).catch((err: any) => {
+      console.error("Unhandled worker error:", err);
+      return new Response(JSON.stringify({ error: "Internal server error" }), {
+        status: 500,
+        headers: {
+          "content-type": "application/json",
+          "access-control-allow-origin": "*",
+        },
+      });
+    });
   },
   async scheduled(
     controller: ScheduledController,

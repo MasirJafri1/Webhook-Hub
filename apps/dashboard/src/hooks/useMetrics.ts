@@ -9,6 +9,6 @@ export function useMetrics() {
       const result = await api.get<MetricsData>("/metrics");
       return result.data;
     },
-    refetchInterval: 5000, // Refresh metrics every 5 seconds for real-time vibe
+    refetchInterval: 90000, // Refresh metrics every 90 seconds for standard dashboard interval
   });
 }

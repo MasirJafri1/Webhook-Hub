@@ -15,9 +15,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthUrl = error.config?.url?.includes("/auth/login") || error.config?.url?.includes("/auth/signup");
+    if (error.response?.status === 401 && !isAuthUrl) {
       localStorage.removeItem("whpk_api_key");
-      window.location.reload();
+      localStorage.removeItem("whpk_user_role");
+      localStorage.removeItem("whpk_user_email");
+      window.location.href = "/login";
     }
     return Promise.reject(error);
   }

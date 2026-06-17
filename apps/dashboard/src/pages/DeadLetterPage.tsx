@@ -37,16 +37,16 @@ export default function DeadLetterPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="p-6 flex flex-col gap-5 glass-panel">
+      <div className="p-6 flex flex-col gap-4 border border-zinc-800 bg-zinc-900 rounded-lg">
         <div className="flex justify-between items-center mb-2">
-          <h3 className="font-display text-xl text-text-main flex items-center gap-2.5 font-semibold">
-            <AlertOctagon size={18} className="text-accent-error" />
+          <h3 className="text-lg text-zinc-50 flex items-center gap-2.5 font-semibold">
+            <AlertOctagon size={18} className="text-red-400" />
             <span>Dead Letter Queue (DLQ) & Poisoned Events</span>
           </h3>
           <button
             onClick={handleReplayAll}
             disabled={isReplayingAll || (deadList.length === 0 && poisonedList.length === 0)}
-            className="bg-gradient-to-r from-accent-primary to-accent-info text-white border-none px-6 py-3 rounded-lg font-semibold cursor-pointer flex items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_15px_rgba(99,102,241,0.4)] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
+            className="bg-zinc-50 hover:bg-zinc-200 text-zinc-950 px-5 py-2.5 rounded-lg font-semibold cursor-pointer flex items-center gap-2 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw size={16} className={isReplayingAll ? "animate-spin" : ""} />
             <span>{isReplayingAll ? "Replaying All..." : "Replay All Events"}</span>

@@ -15,40 +15,41 @@ export default function StatCard({
   trend,
   theme = "primary",
 }: StatCardProps) {
-  const themeClasses = {
+  // Clean semantic border indicators (subtle top borders or icon text coloring)
+  const themeStyles = {
     primary: {
-      iconBg: "bg-accent-primary-glow text-accent-primary",
-      hover: "hover:border-accent-primary/40 hover:shadow-[0_8px_30px_rgba(99,102,241,0.1)]",
+      iconText: "text-zinc-200",
+      iconBg: "bg-zinc-800/80 border-zinc-700",
     },
     success: {
-      iconBg: "bg-accent-success-glow text-accent-success",
-      hover: "hover:border-accent-success/40 hover:shadow-[0_8px_30px_rgba(16,185,129,0.1)]",
+      iconText: "text-green-400",
+      iconBg: "bg-green-500/10 border-green-500/20",
     },
     error: {
-      iconBg: "bg-accent-error-glow text-accent-error",
-      hover: "hover:border-accent-error/40 hover:shadow-[0_8px_30px_rgba(244,63,94,0.1)]",
+      iconText: "text-red-400",
+      iconBg: "bg-red-500/10 border-red-500/20",
     },
     warning: {
-      iconBg: "bg-accent-warning-glow text-accent-warning",
-      hover: "hover:border-accent-warning/40 hover:shadow-[0_8px_30px_rgba(251,191,36,0.1)]",
+      iconText: "text-amber-400",
+      iconBg: "bg-amber-500/10 border-amber-500/20",
     },
   };
 
-  const currentTheme = themeClasses[theme];
+  const currentStyle = themeStyles[theme];
 
   return (
-    <div className={`p-6 flex flex-col gap-3 relative overflow-hidden glass-panel ${currentTheme.hover}`}>
+    <div className="p-6 flex flex-col gap-3 relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-lg shadow-sm transition-colors duration-150 hover:border-zinc-700">
       <div className="flex justify-between items-center">
-        <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">{title}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">{title}</span>
         {icon && (
-          <span className={`flex items-center justify-center w-[38px] h-[38px] rounded-lg ${currentTheme.iconBg}`}>
-            {icon}
+          <span className={`flex items-center justify-center w-8.5 h-8.5 rounded-md border ${currentStyle.iconBg} ${currentStyle.iconText}`}>
+            {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { className: "w-4 h-4" }) : icon}
           </span>
         )}
       </div>
       <div className="flex items-baseline justify-between mt-auto">
-        <span className="font-display text-4xl font-bold text-text-main">{value}</span>
-        {trend && <span className="text-xs font-semibold text-accent-success">{trend}</span>}
+        <span className="text-3xl font-bold tracking-tight text-zinc-50">{value}</span>
+        {trend && <span className="text-[10px] font-medium text-green-400">{trend}</span>}
       </div>
     </div>
   );

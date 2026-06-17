@@ -1,4 +1,6 @@
-import { BarChart2, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { BarChart2, Clock, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMetrics } from "../hooks/useMetrics";
 import { useDeliveries } from "../hooks/useDeliveries";
 import StatCard from "../components/StatCard";
@@ -32,8 +34,39 @@ interface ProcessedChartItem {
 }
 
 export default function MetricsPage() {
+  const queryClient = useQueryClient();
   const { data: metricsData, isLoading: isLoadingMetrics } = useMetrics();
   const { deliveries, isLoadingDeliveries } = useDeliveries();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastSynced, setLastSynced] = useState<number>(Date.now());
+  const [secondsAgo, setSecondsAgo] = useState<number>(0);
+
+  // Update lastSynced whenever data arrives or changes
+  useEffect(() => {
+    if (metricsData) {
+      setLastSynced(Date.now());
+    }
+  }, [metricsData]);
+
+  // Keep track of sync time dynamically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecondsAgo(Math.round((Date.now() - lastSynced) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastSynced]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await queryClient.refetchQueries();
+    setLastSynced(Date.now());
+    setIsRefreshing(false);
+  };
+
+  const getSyncText = () => {
+    if (secondsAgo < 5) return "Synced just now";
+    return `Synced ${secondsAgo}s ago`;
+  };
 
   if (isLoadingMetrics || isLoadingDeliveries) {
     return <div className="text-text-muted text-sm p-8">Loading analytics & metrics...</div>;
@@ -87,6 +120,29 @@ export default function MetricsPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Top Header Row with Title and Refresh Button */}
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-zinc-800 pb-5">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-zinc-50 font-sans">Metrics & Analytics</h2>
+          <p className="text-xs text-zinc-400 font-medium mt-1">
+            Detailed view of webhook delivery latency, volume time-series, and endpoint health.
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-zinc-400 font-medium tabular-nums select-none">
+            {getSyncText()}
+          </span>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center justify-center gap-2 bg-zinc-50 hover:bg-zinc-200 text-zinc-950 font-semibold py-2 px-4 rounded-md text-xs cursor-pointer transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed select-none border border-zinc-300"
+          >
+            <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
       {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard

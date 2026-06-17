@@ -55,13 +55,22 @@ npm run dev
 
 ---
 
-## 4. Run the Dev Bootstrapper
-1. Open the dashboard locally at **[http://localhost:5173](http://localhost:5173)**.
-2. Click the **"Seed & Login as Admin"** button. This automatically:
-   * Sets up `usr_seed_admin` in D1 (`admin@webhook.com` / `AdminSecurePassword123`).
-   * Provisions a default Organization and Project.
-   * Generates a primary publisher API Key.
-   * Logs you in and routes you to the dashboard page!
+## 4. Bootstrap the Local Super Admin
+For security and flexibility, you must manually bootstrap your local Super Admin account.
+
+You can configure credentials by defining `ADMIN_EMAIL` and `ADMIN_PASSWORD` in your `.env` file (or passing them as environment variables / command-line flags):
+
+1. Generate your credentials using the admin script:
+   ```bash
+   cd apps/api-worker
+   # Option A: Reads from .env file or environment variables:
+   node scripts/create-admin.js
+
+   # Option B: Pass credentials directly as arguments:
+   node scripts/create-admin.js --email=admin@webhook.com --password=AdminSecurePassword123
+   ```
+2. The script will output a secure `npx wrangler d1 execute` query command. Copy and run that command in your terminal to seed the local SQLite database. Take note of the printed **API Key** (e.g. `whpk_live_...`).
+3. Open the dashboard locally at **[http://localhost:5173](http://localhost:5173)** and log in using the email and password you configured.
 
 ---
 
@@ -76,11 +85,11 @@ npm run dev
 ---
 
 ## 6. Publish an Event
-Use `curl` in your terminal to ingest a test event using the publisher API Key (`whpk_live_seed_dev_key_abc123`):
+Use `curl` in your terminal to ingest a test event using the publisher API Key printed in step 4:
 
 ```bash
 curl -X POST http://localhost:8790/api/v1/events \
-  -H "Authorization: Bearer whpk_live_seed_dev_key_abc123" \
+  -H "Authorization: Bearer YOUR_GENERATED_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "endpointId": "YOUR_WEBHOOK_ID",

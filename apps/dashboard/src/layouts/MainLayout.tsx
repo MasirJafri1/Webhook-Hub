@@ -44,17 +44,17 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const nameDisplay = emailVal === "admin@webhook.com" ? "Super Admin" : namePart.charAt(0).toUpperCase() + namePart.slice(1);
 
   return (
-    <div className="flex min-h-screen bg-bg-main text-text-main">
+    <div className="flex min-h-screen bg-zinc-950 text-zinc-50">
       {/* Sidebar */}
-      <aside className="w-[260px] bg-bg-sidebar border-r border-border-color flex flex-col p-6 fixed top-0 bottom-0 left-0 z-50">
-        <div className="flex items-center gap-3 px-3 pb-6 border-b border-border-color mb-6">
-          <Terminal className="w-7 h-7 text-accent-primary" />
-          <span className="font-display text-xl font-bold tracking-tight bg-gradient-to-br from-text-main to-accent-primary bg-clip-text text-transparent">
+      <aside className="w-[260px] bg-zinc-900 border-r border-zinc-800 flex flex-col p-6 fixed top-0 bottom-0 left-0 z-50">
+        <div className="flex items-center gap-3 px-3 pb-6 border-b border-zinc-800 mb-6">
+          <Terminal className="w-6 h-6 text-zinc-50" />
+          <span className="text-lg font-semibold tracking-tight text-zinc-50">
             WebHook Hub
           </span>
         </div>
 
-        <nav className="flex flex-col gap-2 flex-grow">
+        <nav className="flex flex-col gap-1.5 flex-grow">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -66,15 +66,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               <Link
                 key={item.path}
                 to={item.path}
-                className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                className={`group flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                   isActive
-                    ? "text-text-main bg-accent-primary-glow border border-border-color-glow shadow-[0_4px_20px_rgba(99,102,241,0.15)]"
-                    : "text-text-muted hover:text-text-main hover:bg-bg-card-hover hover:translate-x-1"
+                    ? "text-zinc-50 bg-zinc-800 border border-zinc-700"
+                    : "text-zinc-400 hover:text-zinc-50 hover:bg-zinc-900/50"
                 }`}
               >
                 <Icon
-                  className={`w-5 h-5 transition-transform duration-200 group-hover:scale-110 ${
-                    isActive ? "text-accent-primary" : "text-text-muted group-hover:text-text-main"
+                  className={`w-4 h-4 transition-transform duration-150 ${
+                    isActive ? "text-zinc-50" : "text-zinc-400 group-hover:text-zinc-50"
                   }`}
                 />
                 <span>{item.name}</span>
@@ -83,14 +83,14 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           })}
         </nav>
 
-        <div className="flex flex-col gap-4 pt-4 border-t border-border-color mt-auto">
+        <div className="flex flex-col gap-4 pt-4 border-t border-zinc-800 mt-auto">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-accent-primary to-accent-info rounded-full flex items-center justify-center font-bold text-sm text-white border-2 border-white/10">
+            <div className="w-8.5 h-8.5 bg-zinc-800 rounded-full flex items-center justify-center font-bold text-xs text-zinc-200 border border-zinc-700">
               {initials}
             </div>
             <div className="flex flex-col flex-grow">
-              <p className="text-sm font-semibold text-text-main">{nameDisplay}</p>
-              <p className="text-xs text-text-dim">{roleDisplay}</p>
+              <p className="text-xs font-semibold text-zinc-200">{nameDisplay}</p>
+              <p className="text-[10px] text-zinc-500">{roleDisplay}</p>
             </div>
           </div>
           <button
@@ -100,9 +100,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               localStorage.removeItem("whpk_user_email");
               window.location.reload();
             }}
-            className="w-full text-left text-xs font-semibold text-text-muted hover:text-red-400 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-500/5 transition-all border-none bg-transparent cursor-pointer"
+            className="w-full text-left text-xs font-medium text-zinc-400 hover:text-red-400 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-500/5 transition-all border-none bg-transparent cursor-pointer"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5" />
             <span>Disconnect Portal</span>
           </button>
         </div>
@@ -110,8 +110,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       {/* Main Content Area */}
       <main className="flex-grow ml-[260px] flex flex-col min-h-screen">
-        <header className="h-[70px] border-b border-border-color px-8 flex items-center justify-between sticky top-0 bg-bg-main/60 backdrop-blur-md z-40">
-          <h2 className="text-xl font-bold text-text-main">
+        <header className="h-[65px] border-b border-zinc-800 px-8 flex items-center justify-between sticky top-0 bg-zinc-950/60 backdrop-blur-md z-40">
+          <h2 className="text-base font-bold text-zinc-50">
             {sidebarItems.find((item) =>
               item.path === "/"
                 ? location.pathname === "/"
@@ -119,8 +119,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             )?.name || "Dashboard"}
           </h2>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-accent-success rounded-full shadow-[0_0_10px_rgba(16,185,129,0.7)] animate-pulse" />
-            <span className="text-xs text-text-muted font-medium">Environment Live (Local)</span>
+            {/* Status indicator has been cleaned up and header spacing tightened */}
           </div>
         </header>
 

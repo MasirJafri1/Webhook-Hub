@@ -27,9 +27,19 @@ function base64UrlDecode(str: string): string {
   return new TextDecoder().decode(bytes);
 }
 
-// ----------------------------------------------------
+// Timing Safe Comparison Helper
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 // Password Hashing (PBKDF2 SHA-256)
-// ----------------------------------------------------
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const pbkdf2Key = await crypto.subtle.importKey(
@@ -86,16 +96,15 @@ export async function verifyPassword(password: string, storedHash: string): Prom
 
   const verifyHashHex = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, "0")).join("");
 
-  return verifyHashHex === originalHashHex;
+  return timingSafeEqual(verifyHashHex, originalHashHex);
 }
 
-// ----------------------------------------------------
 // JWT Token Signing & Verification (HS256)
-// ----------------------------------------------------
 export async function signJwt(payload: Record<string, any>, secret: string): Promise<string> {
   const header = { alg: "HS256", typ: "JWT" };
+  const payloadWithExp = { ...payload, exp: Date.now() + 24 * 60 * 60 * 1000 }; // Expires in 24 hours
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  const encodedPayload = base64UrlEncode(JSON.stringify(payloadWithExp));
   const tokenInput = `${encodedHeader}.${encodedPayload}`;
 
   const secretBytes = new TextEncoder().encode(secret);
@@ -148,7 +157,11 @@ export async function verifyJwt(token: string, secret: string): Promise<Record<s
   if (!isValid) return null;
 
   try {
-    return JSON.parse(base64UrlDecode(encodedPayload));
+    const payload = JSON.parse(base64UrlDecode(encodedPayload));
+    if (!payload.exp || payload.exp < Date.now()) {
+      return null; // Token has expired
+    }
+    return payload;
   } catch {
     return null;
   }

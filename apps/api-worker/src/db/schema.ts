@@ -65,7 +65,7 @@ export const events = sqliteTable("events", {
   projectId: text("project_id").notNull(),
   endpointId: text("endpoint_id").notNull(),
   eventType: text("event_type").notNull(),
-  payload: text("payload").notNull(),
+  payload: text("payload", { mode: "json" }).notNull(),
   status: text("status").notNull(),
   retryCount: integer("retry_count").notNull(),
   nextRetryAt: integer("next_retry_at"),

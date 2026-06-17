@@ -6,6 +6,16 @@ import { json } from "../utils/response";
 import type { Env } from "../types/env";
 import { nanoid } from "nanoid";
 
+function validatePassword(password: string): string | null {
+  if (password.length < 8) {
+    return "Password must be at least 8 characters long.";
+  }
+  if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+    return "Password must contain both letters and numbers.";
+  }
+  return null;
+}
+
 export const registerAuthRoutes = (router: any) => {
   router.post("/api/v1/auth/signup", async (request: any, env: Env) => {
     try {
@@ -14,6 +24,11 @@ export const registerAuthRoutes = (router: any) => {
 
       if (!email || !password) {
         return json({ error: "Email and password are required" }, 400);
+      }
+
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        return json({ error: passwordError }, 400);
       }
 
       const db = getDb(env);
@@ -47,7 +62,8 @@ export const registerAuthRoutes = (router: any) => {
       }, 201);
 
     } catch (err: any) {
-      return json({ error: err.message || "Internal server error" }, 500);
+      console.error("Auth signup error:", err);
+      return json({ error: "Internal server error" }, 500);
     }
   });
 
@@ -70,35 +86,6 @@ export const registerAuthRoutes = (router: any) => {
 
       let user = rows[0];
 
-      // On-the-fly provisioning of Super Admin from env/secrets
-      const isProd = env.ENVIRONMENT === "production";
-      const adminEmail = env.SUPER_ADMIN_EMAIL || (isProd ? null : "admin@webhook.com");
-      const adminPassword = env.SUPER_ADMIN_PASSWORD || (isProd ? null : "AdminSecurePassword123");
-
-      if (!user && adminEmail && adminPassword && normalizedEmail === adminEmail.toLowerCase().trim()) {
-        if (password === adminPassword) {
-          const adminPasswordHash = await hashPassword(adminPassword);
-          const now = Date.now();
-          const adminId = "usr_seed_admin";
-          
-          await db.insert(users).values({
-            id: adminId,
-            email: adminEmail.toLowerCase().trim(),
-            passwordHash: adminPasswordHash,
-            role: "super_admin",
-            approved: true,
-            createdAt: now,
-          });
-
-          // Fetch the newly provisioned admin user
-          const newRows = await db
-            .select()
-            .from(users)
-            .where(eq(users.id, adminId));
-          user = newRows[0];
-        }
-      }
-
       if (!user) {
         return json({ error: "Invalid email or password" }, 401);
       }
@@ -115,7 +102,12 @@ export const registerAuthRoutes = (router: any) => {
         }, 403);
       }
 
-      const jwtSecret = env.JWT_SECRET || "JWT_SECRET_DEV_KEY_abc123";
+      const jwtSecret = env.JWT_SECRET;
+      if (!jwtSecret) {
+        console.error("JWT_SECRET environment variable is not defined");
+        return json({ error: "Internal server error" }, 500);
+      }
+
       const token = await signJwt(
         {
           userId: user.id,
@@ -136,7 +128,8 @@ export const registerAuthRoutes = (router: any) => {
       });
 
     } catch (err: any) {
-      return json({ error: err.message || "Internal server error" }, 500);
+      console.error("Auth login error:", err);
+      return json({ error: "Internal server error" }, 500);
     }
   });
 };

@@ -45,13 +45,27 @@ npx wrangler secret put ENVIRONMENT
 # Add secure JWT token signing key
 npx wrangler secret put JWT_SECRET
 # Value: <generate secure random base64 string>
-
-# Define default Super Admin Email & Password (created on first login)
-npx wrangler secret put SUPER_ADMIN_EMAIL
-npx wrangler secret put SUPER_ADMIN_PASSWORD
 ```
 
-### C. Deploy Worker
+### C. Seed Production Super Admin (Secure Bootstrapping)
+For security, WebHook Hub does not accept plaintext admin passwords in environment variables. You must generate the hashed credentials using the bootstrap script and insert them directly into your remote database:
+
+> [!NOTE]
+> The admin bootstrapping script `create-admin.js` is committed to version control and reads `ADMIN_EMAIL` and `ADMIN_PASSWORD` from your `.env` file (or system environment variables) to keep your credentials secure.
+
+1. Generate your admin password hash and database seeding command:
+   ```bash
+   # Option A: Reads from .env file or environment variables:
+   node scripts/create-admin.js --remote
+
+   # Option B: Pass credentials directly as arguments:
+   node scripts/create-admin.js --email=admin@yourdomain.com --password=YourSecurePassword123 --remote
+   ```
+2. The script will output a secure `wrangler d1 execute` query command. Copy and run that command in your terminal to bootstrap the Super Admin user, organization, default project, member, and default API keys.
+
+---
+
+### D. Deploy Worker
 Run the deployment command:
 ```bash
 npx wrangler deploy

@@ -32,7 +32,11 @@ export async function authenticate(request: any, env: Env) {
     request.apiKeyName = apiKey.name;
   } else {
     // JWT Token auth
-    const jwtSecret = env.JWT_SECRET || "JWT_SECRET_DEV_KEY_abc123";
+    const jwtSecret = env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error("JWT_SECRET is not configured");
+      return json({ error: "Internal server error" }, 500);
+    }
     const decoded = await verifyJwt(key, jwtSecret);
     if (!decoded) {
       return json({ error: "Unauthorized" }, 401);
@@ -60,5 +64,24 @@ export async function authenticate(request: any, env: Env) {
       }
     }
   }
+
+  // Ensure request.projectId is present for non-admin routes
+  const url = new URL(request.url);
+  const isAdminRoute = url.pathname.startsWith("/api/v1/admin");
+  if (!request.projectId && !isAdminRoute) {
+    return json({ 
+      error: "No active project found for this user account. Please contact an administrator to associate your account with an organization and project." 
+    }, 403);
+  }
+}
+
+export function getActor(request: any): string {
+  if (request.user?.email) {
+    return request.user.email;
+  }
+  if (request.apiKeyName) {
+    return `api_key:${request.apiKeyName}`;
+  }
+  return request.headers.get("x-member-email") || "system";
 }
 

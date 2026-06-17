@@ -44,5 +44,4 @@ If you need to add columns or tables to the database:
 ## 4. Local Clean & Reset Utilities
 For integration testing, the API exposes clean/reset routes that are available in local development (but locked/disabled in production):
 * **Reset Database**: `POST /test/reset-db` deletes all rows from D1 tables (organizations, projects, members, users, webhook endpoints, events, deliveries, audit logs).
-* **Seed Database**: `POST /test/seed` inserts default Super Admin credentials (`admin@webhook.com` / `AdminSecurePassword123`) and a default project/API key.
 * **Instant Retry Reset**: `POST /test/reset-retry` resets `next_retry_at` to `0` for all events to force immediate processing.

@@ -32,15 +32,7 @@ export const registerSearchRoutes = (router: any) => {
 
       const results = await repository.searchEvents(filters);
 
-      const formattedResults = results.map((event: any) => {
-        try {
-          return { ...event, payload: JSON.parse(event.payload) };
-        } catch {
-          return event;
-        }
-      });
-
-      return json(formattedResults);
+      return json(results);
     },
   );
 

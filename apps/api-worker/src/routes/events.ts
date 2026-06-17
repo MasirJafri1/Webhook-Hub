@@ -8,7 +8,7 @@ import { WebhookRepository } from "../repositories/webhook.repository";
 import { EventService } from "../services/event.service";
 import { json } from "../utils/response";
 import { DeliveryRepository } from "../repositories/delivery.repository";
-import { authenticate } from "../middleware/auth";
+import { authenticate, getActor } from "../middleware/auth";
 import { AuditService } from "../services/audit.service";
 import { runDeliveryJob } from "../jobs/delivery.job";
 
@@ -30,10 +30,6 @@ export const registerEventRoutes = (router: any) => {
         );
         const result = await service.createEvent(validated, request.projectId);
 
-        try {
-          result.payload = JSON.parse(result.payload);
-        } catch {}
-
         ctx.waitUntil(
           runDeliveryJob(env).catch((e) =>
             console.error("Instant background delivery failed:", e)
@@ -48,7 +44,8 @@ export const registerEventRoutes = (router: any) => {
         if (err.message === "Webhook endpoint not found") {
           return json({ error: "Webhook endpoint not found" }, 404);
         }
-        throw err;
+        console.error("Error creating event:", err);
+        return json({ error: "Internal server error" }, 500);
       }
     },
   );
@@ -70,19 +67,8 @@ export const registerEventRoutes = (router: any) => {
         request.projectId,
       );
 
-      const formattedEvents = data.map((event: any) => {
-        try {
-          return {
-            ...event,
-            payload: JSON.parse(event.payload),
-          };
-        } catch {
-          return event;
-        }
-      });
-
       return json({
-        data: formattedEvents,
+        data,
         total,
         page,
         limit,
@@ -90,17 +76,7 @@ export const registerEventRoutes = (router: any) => {
     }
 
     const eventsList = await repository.findAll(request.projectId);
-    const formattedEvents = eventsList.map((event: any) => {
-      try {
-        return {
-          ...event,
-          payload: JSON.parse(event.payload),
-        };
-      } catch {
-        return event;
-      }
-    });
-    return json(formattedEvents);
+    return json(eventsList);
   });
 
   router.get(
@@ -118,17 +94,7 @@ export const registerEventRoutes = (router: any) => {
           ),
         );
 
-      const formattedRows = rows.map((event: any) => {
-        try {
-          return {
-            ...event,
-            payload: JSON.parse(event.payload),
-          };
-        } catch {
-          return event;
-        }
-      });
-      return json(formattedRows);
+      return json(rows);
     },
   );
 
@@ -147,17 +113,7 @@ export const registerEventRoutes = (router: any) => {
           ),
         );
 
-      const formattedRows = rows.map((event: any) => {
-        try {
-          return {
-            ...event,
-            payload: JSON.parse(event.payload),
-          };
-        } catch {
-          return event;
-        }
-      });
-      return json(formattedRows);
+      return json(rows);
     },
   );
 
@@ -171,9 +127,7 @@ export const registerEventRoutes = (router: any) => {
 
       // Audit Log
       const auditService = new AuditService(db);
-      const actor =
-        request.headers.get("x-member-email") ||
-        `api_key:${request.apiKeyName || "unnamed"}`;
+      const actor = getActor(request);
       await auditService.log("EVENT_REPLAYED", actor, request.projectId);
 
       ctx.waitUntil(
@@ -208,9 +162,7 @@ export const registerEventRoutes = (router: any) => {
 
       // Audit Log
       const auditService = new AuditService(db);
-      const actor =
-        request.headers.get("x-member-email") ||
-        `api_key:${request.apiKeyName || "unnamed"}`;
+      const actor = getActor(request);
       await auditService.log("EVENT_REPLAY_WINDOW", actor, request.projectId);
 
       ctx.waitUntil(
@@ -257,9 +209,7 @@ export const registerEventRoutes = (router: any) => {
 
       // Audit Log
       const auditService = new AuditService(db);
-      const actor =
-        request.headers.get("x-member-email") ||
-        `api_key:${request.apiKeyName || "unnamed"}`;
+      const actor = getActor(request);
       await auditService.log("EVENT_REPLAYED", actor, request.projectId);
 
       ctx.waitUntil(
@@ -285,9 +235,6 @@ export const registerEventRoutes = (router: any) => {
       if (!event) {
         return json({ error: "Event not found" }, 404);
       }
-      try {
-        event.payload = JSON.parse(event.payload);
-      } catch {}
       return json(event);
     },
   );

@@ -12,7 +12,7 @@ import { nanoid } from "nanoid";
 import { generateApiKey } from "../utils/api-key";
 import { sha256 } from "../utils/hash";
 import { json } from "../utils/response";
-import { authenticate } from "../middleware/auth";
+import { authenticate, getActor } from "../middleware/auth";
 import { AuditService } from "../services/audit.service";
 import type { Env } from "../types/env";
 
@@ -116,7 +116,7 @@ export const registerMultitenancyRoutes = (router: any) => {
 
     // Write audit log
     const auditService = new AuditService(db);
-    const actor = request.headers.get("x-member-email") || "system";
+    const actor = getActor(request);
     await auditService.log("API_KEY_CREATED", actor, body.projectId);
 
     return json(
@@ -163,7 +163,7 @@ export const registerMultitenancyRoutes = (router: any) => {
     await db.delete(apiKeys).where(eq(apiKeys.id, id));
 
     const auditService = new AuditService(db);
-    const actor = request.headers.get("x-member-email") || "system";
+    const actor = getActor(request);
     await auditService.log("API_KEY_REVOKED", actor, apiKey.projectId);
 
     return json({ success: true });

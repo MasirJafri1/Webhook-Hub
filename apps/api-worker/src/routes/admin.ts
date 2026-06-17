@@ -31,7 +31,8 @@ export const registerAdminRoutes = (router: any) => {
 
       return json(pendingUsers);
     } catch (err: any) {
-      return json({ error: err.message || "Internal server error" }, 500);
+      console.error("Admin pending users error:", err);
+      return json({ error: "Internal server error" }, 500);
     }
   });
 
@@ -119,7 +120,8 @@ export const registerAdminRoutes = (router: any) => {
       });
 
     } catch (err: any) {
-      return json({ error: err.message || "Internal server error" }, 500);
+      console.error("Admin approve user error:", err);
+      return json({ error: "Internal server error" }, 500);
     }
   });
 };

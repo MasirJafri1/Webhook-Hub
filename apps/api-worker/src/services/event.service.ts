@@ -72,7 +72,7 @@ export class EventService {
       projectId,
       endpointId: payload.endpointId,
       eventType: payload.eventType,
-      payload: JSON.stringify(payload.payload),
+      payload: payload.payload,
       status: "pending",
       retryCount: 0,
       nextRetryAt: null,
