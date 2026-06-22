@@ -116,3 +116,14 @@ WebHook Hub includes a comprehensive set of operational, security, and architect
 * [**Concurrency & Locking**](docs/architecture/durable-objects.md): Stateless distributed event locking using D1 updates.
 * [**Database Schema Design**](docs/architecture/database-design.md): In-depth table representations and indexing rules.
 * [**Tenancy & Workspace Scoping**](docs/architecture/tenancy-model.md): Multi-tenant isolation filters and user credentials authentication flow.
+
+---
+
+## Author
+
+Built by **Masir Jafri** — Software Engineer specializing in Full-Stack Development, Backend System Design, and Generative AI.
+
+* 🌐 Website: [masirjafri.in](https://masirjafri.in)
+* 📝 Blog: [masirjafri.hashnode.dev](https://masirjafri.hashnode.dev)
+* 💻 GitHub: [@MasirJafri1](https://github.com/MasirJafri1)
+* 🔗 LinkedIn: [Masir Jafri](https://linkedin.com/in/masirjafri)
