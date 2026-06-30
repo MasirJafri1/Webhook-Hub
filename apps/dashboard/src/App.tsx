@@ -13,7 +13,7 @@ import AdminPage from "./pages/AdminPage";
 
 export default function App() {
   const [apiKey, setApiKey] = useState<string | null>(
-    localStorage.getItem("whpk_api_key")
+    localStorage.getItem("whpk_api_key"),
   );
 
   const handleLoginSuccess = (key: string) => {
@@ -24,8 +24,14 @@ export default function App() {
   if (!apiKey) {
     return (
       <Routes>
-        <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
-        <Route path="/signup" element={<SignupPage />} />
+        <Route
+          path="/login"
+          element={<LoginPage onLoginSuccess={handleLoginSuccess} />}
+        />
+        <Route
+          path="/signup"
+          element={<SignupPage onSignupSuccess={handleLoginSuccess} />}
+        />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -45,7 +51,7 @@ export default function App() {
         <Route path="/dead" element={<DeadLetterPage />} />
         <Route path="/metrics" element={<MetricsPage />} />
         {isAdmin && <Route path="/admin" element={<AdminPage />} />}
-        
+
         {/* Redirect if hitting authenticated /login or /signup */}
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/signup" element={<Navigate to="/" replace />} />

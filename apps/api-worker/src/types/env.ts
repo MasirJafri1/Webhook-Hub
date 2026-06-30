@@ -5,4 +5,5 @@ export interface Env {
   JWT_SECRET?: string;
   SUPER_ADMIN_EMAIL?: string;
   SUPER_ADMIN_PASSWORD?: string;
+  GOOGLE_CLIENT_ID?: string;
 }

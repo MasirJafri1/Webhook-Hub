@@ -1,14 +1,79 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { KeyRound, ShieldAlert, Loader2, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../services/api";
 
-export default function SignupPage() {
+interface SignupPageProps {
+  onSignupSuccess?: (apiKey: string) => void;
+}
+
+export default function SignupPage({ onSignupSuccess }: SignupPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  const handleGoogleCredentialResponse = async (response: any) => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const res = await api.post<{
+        success: boolean;
+        token: string;
+        user: { id: string; email: string; role: string };
+      }>("/auth/google", {
+        credential: response.credential,
+      });
+
+      const data = res.data;
+      localStorage.setItem("whpk_api_key", data.token);
+      localStorage.setItem("whpk_user_role", data.user.role);
+      localStorage.setItem("whpk_user_email", data.user.email);
+
+      if (onSignupSuccess) {
+        onSignupSuccess(data.token);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Google authentication failed.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    const initGoogle = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: clientId || "YOUR_GOOGLE_CLIENT_ID",
+          callback: handleGoogleCredentialResponse,
+        });
+        window.google.accounts.id.renderButton(
+          document.getElementById("google-signup-btn"),
+          { theme: "outline", size: "large", width: 352, text: "signup_with" },
+        );
+      }
+    };
+
+    if (window.google) {
+      initGoogle();
+    } else {
+      const timer = setInterval(() => {
+        if (window.google) {
+          initGoogle();
+          clearInterval(timer);
+        }
+      }, 500);
+      return () => clearInterval(timer);
+    }
+  }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,16 +82,31 @@ export default function SignupPage() {
     setError("");
 
     try {
-      await api.post("/auth/signup", {
+      const res = await api.post<{
+        success: boolean;
+        token: string;
+        user: { id: string; email: string; role: string };
+      }>("/auth/signup", {
         email: email.trim(),
         password,
       });
-      setIsSuccess(true);
+
+      const data = res.data;
+      if (data.token) {
+        localStorage.setItem("whpk_api_key", data.token);
+        localStorage.setItem("whpk_user_role", data.user.role);
+        localStorage.setItem("whpk_user_email", data.user.email);
+        if (onSignupSuccess) {
+          onSignupSuccess(data.token);
+        }
+      } else {
+        setIsSuccess(true);
+      }
     } catch (err: any) {
       console.error(err);
       setError(
-        err.response?.data?.error || 
-        "Failed to sign up. Make sure your local API worker is running."
+        err.response?.data?.error ||
+          "Failed to sign up. Make sure your local API worker is running.",
       );
     } finally {
       setIsLoading(false);
@@ -37,25 +117,28 @@ export default function SignupPage() {
     return (
       <div className="min-h-screen w-full flex items-center justify-center p-4 relative font-sans">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none z-0" />
-        
+
         <div className="w-full max-w-md p-8 rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-xl shadow-2xl relative flex flex-col gap-6 items-center text-center animate-in fade-in zoom-in-95 duration-300 z-10">
           <div className="h-14 w-14 rounded-full bg-zinc-800/80 border border-zinc-700 flex items-center justify-center shadow-inner shadow-white/5">
             <CheckCircle2 size={28} className="text-indigo-400" />
           </div>
-          
+
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl font-extrabold tracking-tight text-zinc-50 font-display">
               Registration Received
             </h1>
             <p className="text-xs text-zinc-400 leading-relaxed px-4">
-              Your account registration has been successfully received and is currently pending administrator review.
+              Your account registration has been successfully received and is
+              currently pending administrator review.
             </p>
           </div>
 
           <div className="w-full p-5 rounded-xl border border-zinc-800/80 bg-zinc-950/60 text-xs text-zinc-400 leading-relaxed text-center flex flex-col gap-2 shadow-inner">
             <p className="font-semibold text-zinc-200">What happens next?</p>
             <p className="text-[11px] text-zinc-400 font-medium">
-              A system administrator is reviewing pending activations. You will be granted workspace access once approved. Please contact your system administrator if you require immediate approval.
+              A system administrator is reviewing pending activations. You will
+              be granted workspace access once approved. Please contact your
+              system administrator if you require immediate approval.
             </p>
           </div>
 
@@ -77,7 +160,6 @@ export default function SignupPage() {
 
       {/* Main Container */}
       <div className="w-full max-w-md p-8 rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-xl shadow-2xl relative flex flex-col gap-6 animate-in fade-in zoom-in-95 duration-300 z-10">
-        
         {/* Header / Brand */}
         <div className="flex flex-col items-center gap-3.5 text-center">
           <div className="h-11 w-11 rounded-xl bg-zinc-900 border border-zinc-800/80 flex items-center justify-center text-indigo-400 shadow-inner shadow-white/5">
@@ -140,13 +222,29 @@ export default function SignupPage() {
           </button>
         </form>
 
+        <div className="relative flex items-center justify-center my-1">
+          <div className="border-t border-zinc-800 w-full"></div>
+          <span className="absolute px-3 bg-[#1e1e21] text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
+            or
+          </span>
+        </div>
+
+        <div className="flex justify-center w-full">
+          <div
+            id="google-signup-btn"
+            className="w-full flex justify-center"
+          ></div>
+        </div>
+
         <div className="text-center text-xs text-zinc-400 mt-2">
           Already have an account?{" "}
-          <Link to="/login" className="text-zinc-50 hover:text-indigo-400 hover:underline font-semibold transition-colors">
+          <Link
+            to="/login"
+            className="text-zinc-50 hover:text-indigo-400 hover:underline font-semibold transition-colors"
+          >
             Connect here
           </Link>
         </div>
-
       </div>
     </div>
   );

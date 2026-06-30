@@ -13,6 +13,8 @@ import { registerAdminRoutes } from "./routes/admin";
 import { runDeliveryJob } from "./jobs/delivery.job";
 import { runRetentionJob } from "./jobs/retention.job";
 import type { Env } from "./types/env";
+import { RateLimitService } from "./services/rate-limit.service";
+import { json } from "./utils/response";
 
 const router = Router();
 
@@ -26,6 +28,27 @@ router.options("*", () => {
         "content-type, authorization, x-webhook-id, x-webhook-timestamp, x-webhook-signature, idempotency-key",
     },
   });
+});
+
+// Global request rate limiting
+router.all("*", async (request: any, env: Env) => {
+  if (request.method === "OPTIONS") return;
+
+  const url = new URL(request.url);
+  if (url.pathname === "/health" || url.pathname === "/version") return;
+
+  const clientIp = request.headers.get("CF-Connecting-IP") || "local-ip";
+  const rateLimitService = new RateLimitService(env.CACHE);
+
+  // General rate limit: 60 requests per minute per IP address
+  const isLimited = await rateLimitService.isRateLimited(
+    `req:${clientIp}`,
+    60,
+    60,
+  );
+  if (isLimited) {
+    return json({ error: "Too many requests. Please slow down." }, 429);
+  }
 });
 
 router.get("/health", () => healthHandler());
@@ -69,7 +92,9 @@ router.post("/test/update-created-at", async (request: Request, env: Env) => {
   await env.DB.prepare("UPDATE events SET created_at = ? WHERE id = ?")
     .bind(body.createdAt, body.eventId)
     .run();
-  await env.DB.prepare("UPDATE deliveries SET created_at = ? WHERE event_id = ?")
+  await env.DB.prepare(
+    "UPDATE deliveries SET created_at = ? WHERE event_id = ?",
+  )
     .bind(body.createdAt, body.eventId)
     .run();
   return new Response("Ok");
@@ -84,7 +109,6 @@ registerMultitenancyRoutes(router);
 registerDocsRoutes(router);
 registerAuthRoutes(router);
 registerAdminRoutes(router);
-
 
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) => {
