@@ -33,12 +33,13 @@ export const registerMultitenancyRoutes = (router: any) => {
     };
     await db.insert(organizations).values(org);
 
-    // Automatically add creator to organization members as admin
+    // Automatically add creator to organization members as admin (accepted status)
     await db.insert(members).values({
       id: "mem_" + nanoid(),
       organizationId: id,
       email: request.user.email,
       role: "admin",
+      status: "accepted",
     });
 
     return json(org, 201);
@@ -54,7 +55,12 @@ export const registerMultitenancyRoutes = (router: any) => {
       })
       .from(members)
       .innerJoin(organizations, eq(members.organizationId, organizations.id))
-      .where(eq(members.email, request.user.email));
+      .where(
+        and(
+          eq(members.email, request.user.email),
+          eq(members.status, "accepted")
+        )
+      );
     return json(rows);
   });
 
@@ -112,7 +118,12 @@ export const registerMultitenancyRoutes = (router: any) => {
       })
       .from(members)
       .innerJoin(projects, eq(members.organizationId, projects.organizationId))
-      .where(eq(members.email, request.user.email));
+      .where(
+        and(
+          eq(members.email, request.user.email),
+          eq(members.status, "accepted")
+        )
+      );
     return json(rows);
   });
 
@@ -174,6 +185,7 @@ export const registerMultitenancyRoutes = (router: any) => {
       organizationId: body.organizationId,
       email: targetUserEmail,
       role: body.role,
+      status: "pending",
     };
     await db.insert(members).values(member);
     return json(member, 201);
@@ -268,5 +280,93 @@ export const registerMultitenancyRoutes = (router: any) => {
           .where(eq(auditLogs.projectId, projectId))
       : await db.select().from(auditLogs);
     return json(rows);
+  });
+
+  // Invitations management
+  router.get("/api/v1/invitations", authenticate, async (request: any, env: Env) => {
+    try {
+      const db = getDb(env);
+      const rows = await db
+        .select({
+          id: members.id,
+          organizationId: members.organizationId,
+          role: members.role,
+          status: members.status,
+          orgName: organizations.name,
+        })
+        .from(members)
+        .innerJoin(organizations, eq(members.organizationId, organizations.id))
+        .where(
+          and(
+            eq(members.email, request.user.email),
+            eq(members.status, "pending")
+          )
+        );
+      return json(rows);
+    } catch (err: any) {
+      console.error("Error fetching invitations:", err);
+      return json({ error: "Internal server error" }, 500);
+    }
+  });
+
+  router.post("/api/v1/invitations/:id/accept", authenticate, async (request: any, env: Env) => {
+    try {
+      const db = getDb(env);
+      const id = request.params.id;
+
+      // Verify the invitation exists for this user
+      const rows = await db
+        .select()
+        .from(members)
+        .where(
+          and(
+            eq(members.id, id),
+            eq(members.email, request.user.email),
+            eq(members.status, "pending")
+          )
+        );
+      if (rows.length === 0) {
+        return json({ error: "Invitation not found or unauthorized." }, 404);
+      }
+
+      await db
+        .update(members)
+        .set({ status: "accepted" })
+        .where(eq(members.id, id));
+
+      return json({ success: true });
+    } catch (err: any) {
+      console.error("Error accepting invitation:", err);
+      return json({ error: "Internal server error" }, 500);
+    }
+  });
+
+  router.post("/api/v1/invitations/:id/decline", authenticate, async (request: any, env: Env) => {
+    try {
+      const db = getDb(env);
+      const id = request.params.id;
+
+      // Verify the invitation exists for this user
+      const rows = await db
+        .select()
+        .from(members)
+        .where(
+          and(
+            eq(members.id, id),
+            eq(members.email, request.user.email),
+            eq(members.status, "pending")
+          )
+        );
+      if (rows.length === 0) {
+        return json({ error: "Invitation not found or unauthorized." }, 404);
+      }
+
+      await db.delete(members).where(eq(members.id, id));
+
+      return json({ success: true });
+    } catch (err: any) {
+      console.error("Error declining invitation:", err);
+      return json({ error: "Internal server error" }, 500);
+    }
   });
 };

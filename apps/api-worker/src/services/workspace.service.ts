@@ -33,6 +33,7 @@ export class WorkspaceService {
       organizationId: orgId,
       email: email,
       role: "admin",
+      status: "accepted",
     });
 
     // 4. Generate and insert default API key for the Project

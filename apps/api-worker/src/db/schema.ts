@@ -29,6 +29,7 @@ export const members = sqliteTable("members", {
   organizationId: text("organization_id"),
   email: text("email"),
   role: text("role"),
+  status: text("status").default("pending"),
 });
 
 export const auditLogs = sqliteTable("audit_logs", {

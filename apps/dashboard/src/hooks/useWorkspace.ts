@@ -59,16 +59,51 @@ export function useWorkspace() {
     },
   });
 
+  const invitationsQuery = useQuery<any[]>({
+    queryKey: ["invitations"],
+    queryFn: async () => {
+      const result = await api.get<any[]>("/invitations");
+      return result.data;
+    },
+  });
+
+  const acceptInvitationMutation = useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      await api.post(`/invitations/${id}/accept`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invitations"] });
+      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["auth-me"] });
+    },
+  });
+
+  const declineInvitationMutation = useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      await api.post(`/invitations/${id}/decline`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invitations"] });
+    },
+  });
+
   return {
     orgs: orgsQuery.data ?? [],
     isLoadingOrgs: orgsQuery.isLoading,
     projects: projectsQuery.data ?? [],
     isLoadingProjects: projectsQuery.isLoading,
+    invitations: invitationsQuery.data ?? [],
+    isLoadingInvitations: invitationsQuery.isLoading,
     createOrg: createOrgMutation.mutateAsync,
     isCreatingOrg: createOrgMutation.isPending,
     createProject: createProjectMutation.mutateAsync,
     isCreatingProject: createProjectMutation.isPending,
     addMember: addMemberMutation.mutateAsync,
     isAddingMember: addMemberMutation.isPending,
+    acceptInvitation: acceptInvitationMutation.mutateAsync,
+    isAcceptingInvitation: acceptInvitationMutation.isPending,
+    declineInvitation: declineInvitationMutation.mutateAsync,
+    isDecliningInvitation: declineInvitationMutation.isPending,
   };
 }

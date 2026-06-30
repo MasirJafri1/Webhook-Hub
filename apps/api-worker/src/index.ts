@@ -25,7 +25,7 @@ router.options("*", () => {
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
       "access-control-allow-headers":
-        "content-type, authorization, x-webhook-id, x-webhook-timestamp, x-webhook-signature, idempotency-key",
+        "content-type, authorization, x-webhook-id, x-webhook-timestamp, x-webhook-signature, idempotency-key, x-project-id",
     },
   });
 });

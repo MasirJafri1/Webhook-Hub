@@ -1,6 +1,6 @@
 import { getDb } from "../db/client";
 import { apiKeys, members, projects } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { sha256 } from "../utils/hash";
 import { json } from "../utils/response";
 import type { Env } from "../types/env";
@@ -44,11 +44,16 @@ export async function authenticate(request: any, env: Env) {
 
     request.user = decoded; // Attach payload (userId, email, role)
 
-    // Lookup user's project
+    // Lookup user's project (must be accepted membership)
     const memberRows = await db
       .select()
       .from(members)
-      .where(eq(members.email, decoded.email));
+      .where(
+        and(
+          eq(members.email, decoded.email),
+          eq(members.status, "accepted")
+        )
+      );
 
     if (memberRows.length > 0) {
       const targetProjId = request.headers.get("x-project-id");

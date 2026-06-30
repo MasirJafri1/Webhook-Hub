@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:dashboard": "wrangler pages deploy ../dashboard/dist --project-name webhook-platform",
     "typecheck": "tsc --noEmit",
     "migrate": "wrangler d1 execute webhook-platform-db --local --file=drizzle/0001_webhooks.sql"
   },

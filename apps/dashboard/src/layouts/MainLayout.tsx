@@ -14,6 +14,7 @@ import {
   ClipboardList,
   Menu,
   X,
+  Users,
 } from "lucide-react";
 import { useWorkspace } from "../hooks/useWorkspace";
 import { useAuthMe } from "../hooks/useAuthMe";
@@ -137,7 +138,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const { orgs, projects } = useWorkspace();
+  const {
+    orgs,
+    projects,
+    invitations,
+    acceptInvitation,
+    isAcceptingInvitation,
+    declineInvitation,
+    isDecliningInvitation,
+  } = useWorkspace();
   const { user, switchProject, activeRole } = useAuthMe();
 
   const emailVal = user?.email || localStorage.getItem("whpk_user_email") || "developer@domain.com";
@@ -272,7 +281,65 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </div>
         </header>
 
-        <section className="p-4 sm:p-8 flex-grow">{children}</section>
+        <section className="p-4 sm:p-8 flex-grow">
+          {/* Global Invitations Banner */}
+          {invitations.length > 0 && (
+            <div className="flex flex-col gap-3 mb-6 p-4 bg-indigo-950/40 border border-indigo-500/20 rounded-2xl animate-in fade-in slide-in-from-top-3 duration-250">
+              <div className="flex items-center gap-2 text-indigo-400">
+                <Users size={16} />
+                <span className="text-xs font-bold uppercase tracking-wider">Pending Workspace Invitations ({invitations.length})</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {invitations.map((inv) => (
+                  <div key={inv.id} className="flex flex-wrap items-center justify-between gap-3 text-xs bg-zinc-900/60 border border-zinc-800 p-3.5 rounded-xl">
+                    <div className="flex flex-col">
+                      <span className="text-zinc-200">
+                        You have been invited to join <strong className="text-zinc-50">{inv.orgName}</strong> as a{" "}
+                        <strong className="text-indigo-400 capitalize">{inv.role === "user" ? "Developer" : inv.role}</strong>.
+                      </span>
+                      <span className="text-[10px] text-zinc-500 mt-0.5">ID: {inv.id}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await acceptInvitation(inv.id);
+                            alert(`Successfully joined ${inv.orgName}!`);
+                          } catch (err) {
+                            console.error(err);
+                            alert("Failed to accept invitation.");
+                          }
+                        }}
+                        disabled={isAcceptingInvitation}
+                        className="bg-indigo-500 hover:bg-indigo-600 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`Decline invitation to join ${inv.orgName}?`)) {
+                            try {
+                              await declineInvitation(inv.id);
+                            } catch (err) {
+                              console.error(err);
+                              alert("Failed to decline invitation.");
+                            }
+                          }
+                        }}
+                        disabled={isDecliningInvitation}
+                        className="bg-transparent hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 px-3.5 py-1.5 border border-zinc-800 rounded-lg font-bold text-xs cursor-pointer transition-all disabled:opacity-50"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {children}
+        </section>
       </main>
     </div>
   );
