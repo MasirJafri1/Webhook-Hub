@@ -180,7 +180,7 @@ export default function MetricsPage() {
             <BarChart2 size={16} />
             <span>Delivery Performance Trends</span>
           </h4>
-          <div className="h-80 w-full">
+          <div className="h-60 sm:h-80 w-full">
             {chartData.length === 0 ? (
               <div className="flex justify-center items-center h-full text-text-muted text-sm">
                 No active delivery logs found. Send webhooks to visualize data.
@@ -227,7 +227,7 @@ export default function MetricsPage() {
             <Clock size={16} />
             <span>Average Delivery Latency (ms)</span>
           </h4>
-          <div className="h-80 w-full">
+          <div className="h-60 sm:h-80 w-full">
             {chartData.length === 0 ? (
               <div className="flex justify-center items-center h-full text-text-muted text-sm">
                 No latency records available yet.

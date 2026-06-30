@@ -53,7 +53,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
         });
         window.google.accounts.id.renderButton(
           document.getElementById("google-signin-btn"),
-          { theme: "outline", size: "large", width: 352, text: "signin_with" },
+          { theme: "outline", size: "large", width: 300, text: "signin_with" },
         );
       }
     };

@@ -208,7 +208,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {/* Main Content */}
       <main className="flex-grow lg:ml-[260px] flex flex-col min-h-screen">
         {/* Sticky Header */}
-        <header className="h-[65px] border-b border-zinc-800/60 px-4 sm:px-8 flex items-center justify-between sticky top-0 bg-zinc-950/40 backdrop-blur-md z-40">
+        <header className="h-auto min-h-[56px] sm:h-[65px] border-b border-zinc-800/60 px-3 sm:px-8 py-2 sm:py-0 flex items-center justify-between sticky top-0 bg-zinc-950/40 backdrop-blur-md z-40 gap-2">
           <div className="flex items-center gap-3">
             {/* Hamburger — mobile only */}
             <button
@@ -218,14 +218,14 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             >
               <Menu size={20} />
             </button>
-            <h2 className="text-base font-bold text-zinc-50 font-display">{currentPage}</h2>
+            <h2 className="text-sm sm:text-base font-bold text-zinc-50 font-display truncate">{currentPage}</h2>
           </div>
-          <div className="flex items-center gap-3.5 relative">
+          <div className="flex items-center gap-2 sm:gap-3.5 relative shrink-0">
             <a
               href="https://webhook-platform-api.masirjafri1.workers.dev/docs"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-semibold text-zinc-400 hover:text-zinc-50 transition-colors bg-zinc-900 border border-zinc-850 hover:border-zinc-700/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5"
+              className="hidden sm:flex text-xs font-semibold text-zinc-400 hover:text-zinc-50 transition-colors bg-zinc-900 border border-zinc-850 hover:border-zinc-700/80 px-3 py-1.5 rounded-lg items-center gap-1.5"
             >
               <span>API Reference</span>
             </a>
@@ -234,11 +234,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-850 hover:border-zinc-700/80 rounded-lg text-xs font-semibold text-zinc-200 cursor-pointer transition-all hover:bg-zinc-850/40"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 bg-zinc-900 border border-zinc-850 hover:border-zinc-700/80 rounded-lg text-xs font-semibold text-zinc-200 cursor-pointer transition-all hover:bg-zinc-850/40 max-w-[160px] sm:max-w-none"
                 >
-                  <span className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">{activeOrgName}</span>
-                  <span className="w-[1px] h-3 bg-zinc-800"></span>
-                  <span>{activeProjName}</span>
+                  <span className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase hidden sm:inline">{activeOrgName}</span>
+                  <span className="w-[1px] h-3 bg-zinc-800 hidden sm:block"></span>
+                  <span className="truncate">{activeProjName}</span>
                   <svg
                     className={`w-3 h-3 text-zinc-400 transition-transform duration-200 ${
                       dropdownOpen ? "rotate-180" : ""

@@ -49,7 +49,7 @@ export default function SignupPage({ onSignupSuccess }: SignupPageProps) {
         });
         window.google.accounts.id.renderButton(
           document.getElementById("google-signup-btn"),
-          { theme: "outline", size: "large", width: 352, text: "signup_with" },
+          { theme: "outline", size: "large", width: 300, text: "signup_with" },
         );
       }
     };

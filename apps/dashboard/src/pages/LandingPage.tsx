@@ -12,13 +12,16 @@ import {
   Code,
   CheckCircle2,
   Copy,
-  Check
+  Check,
+  Menu,
+  X as XIcon,
 } from "lucide-react";
 
 export default function LandingPage() {
   const [demoState, setDemoState] = useState<"idle" | "sending" | "success">("idle");
   const [copiedCode, setCopiedCode] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const demoApiKey = "whpk_live_8f3d2a9c1e7b";
   const demoEndpointId = "ep_92f8a1c5d3e7";
@@ -84,7 +87,7 @@ export default function LandingPage() {
 
       {/* Header */}
       <header className="border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-50 transition-all">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
             <div className="w-9 h-9 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
               <Webhook size={18} className="text-white" />
@@ -93,7 +96,9 @@ export default function LandingPage() {
               WebHook Hub
             </span>
           </div>
-          <div className="flex items-center gap-6">
+
+          {/* Desktop Nav */}
+          <div className="hidden sm:flex items-center gap-6">
             <a
               href="https://webhook-platform-api.masirjafri1.workers.dev/docs"
               target="_blank"
@@ -102,12 +107,60 @@ export default function LandingPage() {
             >
               API Reference
             </a>
-
             <div className="flex items-center gap-4">
+              {isLoggedIn ? (
+                <Link
+                  to="/dashboard"
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/10 active:scale-[0.98]"
+                >
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-sm font-semibold text-zinc-400 hover:text-zinc-50 transition-colors px-3 py-1.5"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/10 active:scale-[0.98]"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile Hamburger */}
+          <button
+            className="sm:hidden p-2 rounded-lg hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-50 cursor-pointer border-none bg-transparent transition-all"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle navigation"
+          >
+            {mobileMenuOpen ? <XIcon size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+
+        {/* Mobile Nav Dropdown */}
+        {mobileMenuOpen && (
+          <div className="sm:hidden border-t border-zinc-900 bg-zinc-950/95 backdrop-blur-md px-4 py-4 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <a
+              href="https://webhook-platform-api.masirjafri1.workers.dev/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-semibold text-zinc-400 hover:text-zinc-50 transition-colors py-2 px-3 rounded-lg hover:bg-white/[0.04]"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              API Reference
+            </a>
             {isLoggedIn ? (
               <Link
                 to="/dashboard"
-                className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/10 active:scale-[0.98]"
+                className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all text-center"
+                onClick={() => setMobileMenuOpen(false)}
               >
                 Go to Dashboard
               </Link>
@@ -115,25 +168,26 @@ export default function LandingPage() {
               <>
                 <Link
                   to="/login"
-                  className="text-sm font-semibold text-zinc-400 hover:text-zinc-50 transition-colors px-3 py-1.5"
+                  className="text-sm font-semibold text-zinc-400 hover:text-zinc-50 transition-colors py-2 px-3 rounded-lg hover:bg-white/[0.04]"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   Sign In
                 </Link>
                 <Link
                   to="/signup"
-                  className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/10 active:scale-[0.98]"
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all text-center"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   Get Started
                 </Link>
               </>
             )}
           </div>
-        </div>
-      </div>
-    </header>
+        )}
+      </header>
 
       {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-6 pt-20 pb-16 md:pt-28 md:pb-24 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-12 md:pt-28 md:pb-24 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 
         {/* Left text column */}
         <div className="flex flex-col gap-6 lg:col-span-6 text-left max-w-2xl">
@@ -142,7 +196,7 @@ export default function LandingPage() {
             <span>Developer-First Webhook Infrastructure</span>
           </div>
 
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-zinc-50 leading-[1.1] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-zinc-50 leading-[1.1] tracking-tight">
             Reliable webhooks. <br />
             <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-300 bg-clip-text text-transparent">
               Delivered at the edge.
@@ -296,7 +350,7 @@ export default function LandingPage() {
 
       {/* Features Grid */}
       <section className="bg-zinc-900/30 border-y border-zinc-900 py-20 relative">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center flex flex-col items-center gap-3 mb-16">
             <h2 className="text-3xl font-display font-extrabold text-zinc-50 tracking-tight">
               Production-Ready Edge Engine
@@ -306,7 +360,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
             {/* Feature 1 */}
             <div className="p-6 flex flex-col gap-4 border border-zinc-800 bg-zinc-900/40 rounded-2xl text-left hover:border-zinc-700 transition-all duration-200">
               <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -410,7 +464,7 @@ export default function LandingPage() {
       </section>
 
       {/* Visual Tutorial / Walkthrough Guide */}
-      <section className="max-w-7xl mx-auto px-6 py-20 md:py-28">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-28">
         <div className="text-center flex flex-col items-center gap-3 mb-16">
           <h2 className="text-3xl font-display font-extrabold text-zinc-50 tracking-tight">
             How It Works in 3 Steps
@@ -493,11 +547,11 @@ export default function LandingPage() {
       </section>
 
       {/* Call to Action Footer Panel */}
-      <section className="max-w-7xl mx-auto px-6 pb-24">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 md:pb-24">
         <div className="p-8 md:p-12 border border-zinc-800 bg-gradient-to-br from-zinc-900/60 to-zinc-900/10 backdrop-blur-md rounded-3xl text-center flex flex-col items-center gap-5 relative overflow-hidden shadow-2xl">
           <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none" />
 
-          <h2 className="text-3xl md:text-4xl font-display font-extrabold text-zinc-50 max-w-lg tracking-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-extrabold text-zinc-50 max-w-lg tracking-tight">
             Ready to route webhooks with total peace of mind?
           </h2>
           <p className="text-sm text-zinc-400 max-w-md font-light leading-relaxed">
@@ -534,7 +588,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-zinc-900 py-10 bg-zinc-950/40 relative">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
           <div className="flex items-center gap-3">
             <Webhook size={16} className="text-indigo-400" />
             <span className="text-xs text-zinc-500 font-mono">
