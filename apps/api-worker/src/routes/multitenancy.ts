@@ -230,10 +230,14 @@ export const registerMultitenancyRoutes = (router: any) => {
   });
 
   // API Keys
-  router.post("/api/v1/api-keys", async (request: Request, env: Env) => {
+  router.post("/api/v1/api-keys", authenticate, async (request: any, env: Env) => {
     const body: any = await request.json();
-    if (!body.name || !body.projectId) {
-      return json({ error: "Name and projectId are required" }, 400);
+    if (!body.name) {
+      return json({ error: "Name is required" }, 400);
+    }
+    const projectId = request.projectId || body.projectId;
+    if (!projectId || projectId === "__auto__") {
+      return json({ error: "projectId is required" }, 400);
     }
     const db = getDb(env);
     const id = "key_" + nanoid();
@@ -242,7 +246,7 @@ export const registerMultitenancyRoutes = (router: any) => {
 
     const apiKeyData = {
       id,
-      projectId: body.projectId,
+      projectId,
       keyHash,
       name: body.name,
       active: true,
@@ -253,7 +257,7 @@ export const registerMultitenancyRoutes = (router: any) => {
     // Write audit log
     const auditService = new AuditService(db);
     const actor = getActor(request);
-    await auditService.log("API_KEY_CREATED", actor, body.projectId);
+    await auditService.log("API_KEY_CREATED", actor, projectId);
 
     return json(
       {
@@ -278,7 +282,7 @@ export const registerMultitenancyRoutes = (router: any) => {
     }
 
     const rows = await db
-      .select({ id: apiKeys.id, name: apiKeys.name })
+      .select({ id: apiKeys.id, name: apiKeys.name, active: apiKeys.active })
       .from(apiKeys)
       .where(eq(apiKeys.projectId, projectId));
 

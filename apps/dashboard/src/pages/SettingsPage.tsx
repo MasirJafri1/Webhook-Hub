@@ -332,7 +332,7 @@ export default function SettingsPage() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <CopyableField label="Account Email" value={email} />
-              <CopyableField label="Active API Key" value={currentKey} masked />
+              <CopyableField label="Session Token (JWT)" value={currentKey} masked />
               {projectId !== "—" && <CopyableField label="Project ID" value={projectId} />}
               {orgId !== "—" && <CopyableField label="Organization ID" value={orgId} />}
             </div>
