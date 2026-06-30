@@ -6,6 +6,7 @@ import {
   apiKeys,
   members,
   auditLogs,
+  users,
 } from "../db/schema";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -140,11 +141,38 @@ export const registerMultitenancyRoutes = (router: any) => {
       return json({ error: "Forbidden: You are not a member of this organization" }, 403);
     }
 
+    const targetUserEmail = body.email.toLowerCase().trim();
+
+    // Verify target user exists on the platform
+    const targetUserRows = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, targetUserEmail));
+
+    if (targetUserRows.length === 0) {
+      return json({ error: "User with this email does not exist on the platform." }, 400);
+    }
+
+    // Check if user is already a member of this organization
+    const existingMembership = await db
+      .select()
+      .from(members)
+      .where(
+        and(
+          eq(members.organizationId, body.organizationId),
+          eq(members.email, targetUserEmail)
+        )
+      );
+
+    if (existingMembership.length > 0) {
+      return json({ error: "User is already a member of this organization." }, 400);
+    }
+
     const id = "mem_" + nanoid();
     const member = {
       id,
       organizationId: body.organizationId,
-      email: body.email,
+      email: targetUserEmail,
       role: body.role,
     };
     await db.insert(members).values(member);
