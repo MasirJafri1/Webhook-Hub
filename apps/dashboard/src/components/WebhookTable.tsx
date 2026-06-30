@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Trash2, RefreshCw, Key, ShieldAlert } from "lucide-react";
+import { Trash2, RefreshCw, ExternalLink } from "lucide-react";
 import type { Webhook } from "../types";
 
 interface WebhookTableProps {
@@ -55,22 +55,21 @@ export default function WebhookTable({
 
   return (
     <div className="w-full overflow-x-auto mb-6 glass-panel">
-      <table className="w-full border-collapse text-left text-sm">
+      <table className="w-full border-collapse text-left text-sm table-fixed">
         <thead>
           <tr className="border-b border-border-color">
-            <th className="px-6 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted">Name</th>
-            <th className="px-6 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted">Target URL</th>
-            <th className="px-6 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted">Rate Limit</th>
-            <th className="px-6 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted">Secrets Info</th>
-            <th className="px-6 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted">Status</th>
-            <th className="px-6 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted">Created</th>
-            <th className="px-6 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted text-right">Actions</th>
+            <th className="px-5 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted w-[22%]">Name</th>
+            <th className="px-5 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted w-[35%]">Target URL</th>
+            <th className="px-5 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted w-[10%]">Rate</th>
+            <th className="px-5 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted w-[10%]">Status</th>
+            <th className="px-5 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted w-[13%]">Created</th>
+            <th className="px-5 py-4 font-display font-semibold uppercase text-xs tracking-wider text-text-muted text-right w-[10%]">Actions</th>
           </tr>
         </thead>
         <tbody>
           {webhooks.length === 0 ? (
             <tr>
-              <td colSpan={7} className="px-6 py-12 text-center text-text-muted text-base">
+              <td colSpan={6} className="px-5 py-12 text-center text-text-muted text-base">
                 No webhook endpoints registered. Register one to start routing events.
               </td>
             </tr>
@@ -81,41 +80,24 @@ export default function WebhookTable({
                 onClick={() => onRowClick?.(webhook.id)}
                 className="border-b border-border-color hover:bg-white/[0.04] transition-colors duration-200 cursor-pointer"
               >
-                <td className="px-6 py-4.5 font-medium align-middle">
-                  <div className="text-sm font-semibold text-text-main">{webhook.name}</div>
-                  <div className="text-xs text-text-dim mt-1">ID: {webhook.id}</div>
+                <td className="px-5 py-4 align-middle">
+                  <div className="text-sm font-semibold text-text-main truncate">{webhook.name}</div>
+                  <div className="text-[11px] text-text-dim mt-0.5 font-mono truncate">{webhook.id}</div>
                 </td>
-                <td className="px-6 py-4.5 align-middle">
-                  <div className="font-mono text-xs text-accent-info max-width-[300px] truncate" title={webhook.url}>
-                    {webhook.url}
+                <td className="px-5 py-4 align-middle">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <ExternalLink size={12} className="text-accent-info shrink-0" />
+                    <span className="font-mono text-xs text-accent-info truncate" title={webhook.url}>
+                      {webhook.url}
+                    </span>
                   </div>
                 </td>
-                <td className="px-6 py-4.5 align-middle">
+                <td className="px-5 py-4 align-middle">
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-accent-warning-glow text-accent-warning border border-accent-warning/20">
-                    {webhook.requestsPerMinute} RPM
+                    {webhook.requestsPerMinute}
                   </span>
                 </td>
-                <td className="px-6 py-4.5 align-middle">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5">
-                      <Key size={12} className="text-accent-success" />
-                      <span className="text-[10px] text-text-dim w-11">Current:</span>
-                      <code className="font-mono bg-white/[0.05] border border-border-color px-2 py-0.5 rounded text-[11px] text-text-muted" title={webhook.currentSecret}>
-                        {webhook.currentSecret.slice(0, 8)}...
-                      </code>
-                    </div>
-                    {webhook.previousSecret && (
-                      <div className="flex items-center gap-1.5">
-                        <ShieldAlert size={12} className="text-accent-warning" />
-                        <span className="text-[10px] text-text-dim w-11">Prev:</span>
-                        <code className="font-mono bg-white/[0.05] border border-border-color px-2 py-0.5 rounded text-[11px] text-text-muted" title={webhook.previousSecret}>
-                          {webhook.previousSecret.slice(0, 8)}...
-                        </code>
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4.5 align-middle">
+                <td className="px-5 py-4 align-middle">
                   <span
                     className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider border ${
                       webhook.active
@@ -126,12 +108,12 @@ export default function WebhookTable({
                     {webhook.active ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="px-6 py-4.5 align-middle">
+                <td className="px-5 py-4 align-middle">
                   <span className="text-xs text-text-muted">
-                    {new Date(webhook.createdAt).toLocaleString()}
+                    {new Date(webhook.createdAt).toLocaleDateString()}
                   </span>
                 </td>
-                <td className="px-6 py-4.5 align-middle text-right">
+                <td className="px-5 py-4 align-middle text-right">
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={(e) => handleRotate(webhook.id, e)}

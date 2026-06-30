@@ -17,6 +17,7 @@ export default function WebhooksPage() {
   const [eventFilters, setEventFilters] = useState("");
   const [customHeaders, setCustomHeaders] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   // Drawer & modal state
   const [selectedWebhookId, setSelectedWebhookId] = useState<string | null>(null);
@@ -43,7 +44,7 @@ export default function WebhooksPage() {
         ? eventFilters.split(",").map(f => f.trim()).filter(Boolean)
         : undefined;
 
-      await createWebhook({
+      const createdWebhook = await createWebhook({
         name,
         url,
         requestsPerMinute: parseInt(rpm, 10) || 60,
@@ -58,6 +59,12 @@ export default function WebhooksPage() {
       setEventFilters("");
       setCustomHeaders("");
       setVersion("v1");
+      setShowCreateForm(false);
+
+      // Show the secret immediately — it's only available at creation time
+      if (createdWebhook?.currentSecret) {
+        setRevealedSecret(createdWebhook.currentSecret);
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to create webhook endpoint.");
@@ -79,12 +86,23 @@ export default function WebhooksPage() {
     <div className="flex flex-col gap-8">
       {/* Register Section */}
       <div className="p-6 flex flex-col gap-4 border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-md rounded-2xl shadow-xl z-10 animate-in fade-in duration-200">
-        <h3 className="text-lg text-zinc-50 flex items-center gap-2.5 font-bold font-display">
-          <WebhookIcon size={18} className="text-indigo-400" />
-          <span>Register New Webhook Endpoint</span>
-        </h3>
-        {isAdmin ? (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg text-zinc-50 flex items-center gap-2.5 font-bold font-display">
+            <WebhookIcon size={18} className="text-indigo-400" />
+            <span>Webhook Endpoints</span>
+          </h3>
+          {isAdmin && (
+            <button
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              className="bg-zinc-50 hover:bg-zinc-200 text-zinc-950 px-4 py-2 rounded-xl font-bold cursor-pointer flex items-center gap-2 transition-all duration-200 active:scale-[0.98] text-sm"
+            >
+              <Plus size={14} />
+              <span>{showCreateForm ? "Cancel" : "New Endpoint"}</span>
+            </button>
+          )}
+        </div>
+        {isAdmin && showCreateForm ? (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5 border-t border-zinc-800/60 pt-4 mt-1 animate-in slide-in-from-top-2 duration-300">
           {/* Row 1: Core Fields */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="flex flex-col gap-1.5">
@@ -171,11 +189,11 @@ export default function WebhooksPage() {
             </button>
           </div>
         </form>
-        ) : (
-          <div className="flex flex-col items-center gap-1.5 py-4 border border-dashed border-zinc-850 rounded-xl bg-zinc-950/10 text-center">
+        ) : !isAdmin ? (
+          <div className="flex flex-col items-center gap-1.5 py-4 border border-dashed border-zinc-800/40 rounded-xl bg-zinc-950/10 text-center">
             <span className="text-zinc-500 text-xs font-semibold">🔒 You must be an administrator to register new webhook endpoints.</span>
           </div>
-        )}
+        ) : null}
         <p className="text-xs text-text-dim mt-2">
           Click any row in the table below to view details, per-endpoint metrics, and manage the signing secret.
         </p>
