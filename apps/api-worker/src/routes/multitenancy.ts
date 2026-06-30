@@ -7,7 +7,7 @@ import {
   members,
   auditLogs,
 } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { generateApiKey } from "../utils/api-key";
 import { sha256 } from "../utils/hash";
