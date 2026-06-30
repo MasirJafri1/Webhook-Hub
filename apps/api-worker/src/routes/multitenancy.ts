@@ -18,7 +18,7 @@ import type { Env } from "../types/env";
 
 export const registerMultitenancyRoutes = (router: any) => {
   // Organizations
-  router.post("/api/v1/orgs", async (request: Request, env: Env) => {
+  router.post("/api/v1/orgs", authenticate, async (request: any, env: Env) => {
     const body: any = await request.json();
     if (!body.name) {
       return json({ error: "Name is required" }, 400);
@@ -31,22 +31,54 @@ export const registerMultitenancyRoutes = (router: any) => {
       createdAt: Date.now(),
     };
     await db.insert(organizations).values(org);
+
+    // Automatically add creator to organization members as admin
+    await db.insert(members).values({
+      id: "mem_" + nanoid(),
+      organizationId: id,
+      email: request.user.email,
+      role: "admin",
+    });
+
     return json(org, 201);
   });
 
-  router.get("/api/v1/orgs", async (_request: any, env: Env) => {
+  router.get("/api/v1/orgs", authenticate, async (request: any, env: Env) => {
     const db = getDb(env);
-    const rows = await db.select().from(organizations);
+    const rows = await db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        createdAt: organizations.createdAt,
+      })
+      .from(members)
+      .innerJoin(organizations, eq(members.organizationId, organizations.id))
+      .where(eq(members.email, request.user.email));
     return json(rows);
   });
 
   // Projects
-  router.post("/api/v1/projects", async (request: Request, env: Env) => {
+  router.post("/api/v1/projects", authenticate, async (request: any, env: Env) => {
     const body: any = await request.json();
     if (!body.name || !body.organizationId) {
       return json({ error: "Name and organizationId are required" }, 400);
     }
     const db = getDb(env);
+
+    // Verify creator is member of the organization
+    const membership = await db
+      .select()
+      .from(members)
+      .where(
+        and(
+          eq(members.organizationId, body.organizationId),
+          eq(members.email, request.user.email)
+        )
+      );
+    if (membership.length === 0) {
+      return json({ error: "Forbidden: You are not a member of this organization" }, 403);
+    }
+
     const id = "proj_" + nanoid();
     const project = {
       id,
@@ -66,14 +98,25 @@ export const registerMultitenancyRoutes = (router: any) => {
     return json(project, 201);
   });
 
-  router.get("/api/v1/projects", async (_request: any, env: Env) => {
+  router.get("/api/v1/projects", authenticate, async (request: any, env: Env) => {
     const db = getDb(env);
-    const rows = await db.select().from(projects);
+    const rows = await db
+      .select({
+        id: projects.id,
+        organizationId: projects.organizationId,
+        name: projects.name,
+        monthlyEventLimit: projects.monthlyEventLimit,
+        retentionDays: projects.retentionDays,
+        createdAt: projects.createdAt,
+      })
+      .from(members)
+      .innerJoin(projects, eq(members.organizationId, projects.organizationId))
+      .where(eq(members.email, request.user.email));
     return json(rows);
   });
 
   // Members
-  router.post("/api/v1/members", async (request: Request, env: Env) => {
+  router.post("/api/v1/members", authenticate, async (request: any, env: Env) => {
     const body: any = await request.json();
     if (!body.organizationId || !body.email || !body.role) {
       return json(
@@ -82,6 +125,21 @@ export const registerMultitenancyRoutes = (router: any) => {
       );
     }
     const db = getDb(env);
+
+    // Verify creator is member of the organization
+    const membership = await db
+      .select()
+      .from(members)
+      .where(
+        and(
+          eq(members.organizationId, body.organizationId),
+          eq(members.email, request.user.email)
+        )
+      );
+    if (membership.length === 0) {
+      return json({ error: "Forbidden: You are not a member of this organization" }, 403);
+    }
+
     const id = "mem_" + nanoid();
     const member = {
       id,

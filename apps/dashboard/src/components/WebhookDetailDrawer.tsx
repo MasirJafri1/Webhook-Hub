@@ -152,42 +152,75 @@ export default function WebhookDetailDrawer({
                 </div>
 
                 {/* API Version & Rules */}
-                <div className="flex flex-col gap-2 p-3 bg-zinc-950/40 border border-zinc-800 rounded-lg text-xs">
-                  <div className="flex justify-between items-center py-1">
-                    <span className="text-text-muted font-medium">API Version</span>
-                    <span className="font-bold text-indigo-400 uppercase">{webhook.version || "v1"}</span>
-                  </div>
-                  
-                  <div className="border-t border-zinc-850/60 my-1"></div>
-                  
-                  <div className="flex flex-col gap-1 py-1">
-                    <span className="text-text-muted font-medium">Subscribed Event Rules</span>
-                    {webhook.eventFilters && webhook.eventFilters.length > 0 ? (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {webhook.eventFilters.map((f) => (
-                          <span key={f} className="bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded font-mono text-[10px] border border-zinc-700">
-                            {f}
-                          </span>
-                        ))}
+                {(() => {
+                  let parsedFilters: string[] | null = null;
+                  if (webhook.eventFilters) {
+                    if (Array.isArray(webhook.eventFilters)) {
+                      parsedFilters = webhook.eventFilters;
+                    } else if (typeof webhook.eventFilters === "string") {
+                      try {
+                        parsedFilters = JSON.parse(webhook.eventFilters);
+                      } catch (e) {
+                        parsedFilters = (webhook.eventFilters as string)
+                          .split(",")
+                          .map((f) => f.trim())
+                          .filter(Boolean);
+                      }
+                    }
+                  }
+
+                  let parsedHeaders: Record<string, string> | null = null;
+                  if (webhook.customHeaders) {
+                    if (typeof webhook.customHeaders === "object") {
+                      parsedHeaders = webhook.customHeaders as Record<string, string>;
+                    } else if (typeof webhook.customHeaders === "string") {
+                      try {
+                        parsedHeaders = JSON.parse(webhook.customHeaders);
+                      } catch (e) {
+                        parsedHeaders = null;
+                      }
+                    }
+                  }
+
+                  return (
+                    <div className="flex flex-col gap-2 p-3 bg-zinc-950/40 border border-zinc-800 rounded-lg text-xs">
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-text-muted font-medium">API Version</span>
+                        <span className="font-bold text-indigo-400 uppercase">{webhook.version || "v1"}</span>
                       </div>
-                    ) : (
-                      <span className="text-text-dim text-[11px]">All events (no filter)</span>
-                    )}
-                  </div>
+                      
+                      <div className="border-t border-zinc-850/60 my-1"></div>
+                      
+                      <div className="flex flex-col gap-1 py-1">
+                        <span className="text-text-muted font-medium">Subscribed Event Rules</span>
+                        {parsedFilters && parsedFilters.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {parsedFilters.map((f) => (
+                              <span key={f} className="bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded font-mono text-[10px] border border-zinc-700">
+                                {f}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-text-dim text-[11px]">All events (no filter)</span>
+                        )}
+                      </div>
 
-                  <div className="border-t border-zinc-850/60 my-1"></div>
+                      <div className="border-t border-zinc-850/60 my-1"></div>
 
-                  <div className="flex flex-col gap-1 py-1">
-                    <span className="text-text-muted font-medium">Custom Headers</span>
-                    {webhook.customHeaders && Object.keys(webhook.customHeaders).length > 0 ? (
-                      <pre className="bg-zinc-900 border border-zinc-800 rounded p-2 font-mono text-[10px] text-text-muted overflow-x-auto mt-1 max-h-24 leading-normal">
-                        {JSON.stringify(webhook.customHeaders, null, 2)}
-                      </pre>
-                    ) : (
-                      <span className="text-text-dim text-[11px]">None configured</span>
-                    )}
-                  </div>
-                </div>
+                      <div className="flex flex-col gap-1 py-1">
+                        <span className="text-text-muted font-medium">Custom Headers</span>
+                        {parsedHeaders && Object.keys(parsedHeaders).length > 0 ? (
+                          <pre className="bg-zinc-900 border border-zinc-800 rounded p-2 font-mono text-[10px] text-text-muted overflow-x-auto mt-1 max-h-24 leading-normal">
+                            {JSON.stringify(parsedHeaders, null, 2)}
+                          </pre>
+                        ) : (
+                          <span className="text-text-dim text-[11px]">None configured</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Signing Secret */}
