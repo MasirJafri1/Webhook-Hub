@@ -8,24 +8,66 @@ WebHook Hub implements a **multi-tenant logical isolation model** within a share
 
 ```mermaid
 graph TD
-    A[Global Platform] --> B(Users Table)
-    A --> C(Organizations Table)
+    A["Global Platform"] --> B("Users Table")
+    A --> C("Organizations Table")
     
-    C --> D[Organization A]
-    C --> E[Organization B]
+    C --> D["Organization A"]
+    C --> E["Organization B"]
     
-    D --> F[Members Table: association of User -> Org]
-    D --> G[Project A1]
-    D --> H[Project A2]
+    D --> F["Members Table: User → Org (role)"]
+    D --> G["Project A1"]
+    D --> H["Project A2"]
     
-    G --> I[API Keys]
-    G --> J[Webhook Endpoints]
-    G --> K[Events & Delivery Logs]
+    G --> I["API Keys"]
+    G --> J["Webhook Endpoints"]
+    G --> K["Events & Delivery Logs"]
+    
+    style F fill:#e3f2fd,stroke:#1565c0
 ```
 
 1. **Organization**: The primary administrative and billing boundary. Users do not own projects directly; they belong to organizations, which in turn hold projects.
 2. **Project**: The logical scoping unit for Webhooks. Endpoints, events, and API keys are bound to a specific project. Data is isolated at the Project level.
-3. **Members**: Connects users to organizations with specific permission roles.
+3. **Members**: Connects users to organizations with specific permission roles (`owner`, `admin`, `member`).
+
+---
+
+## Workspace Auto-Provisioning
+
+When a new user signs in via **Google OAuth** for the first time, the `WorkspaceService` automatically bootstraps their workspace:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Worker as API Worker
+    participant WS as WorkspaceService
+    participant DB as D1 Database
+
+    User->>Worker: POST /api/v1/auth/google {credential}
+    Worker->>Worker: Verify Google token
+    Worker->>DB: Check if user exists by email
+
+    alt New User
+        Worker->>DB: INSERT user (auto-approved)
+        Worker->>WS: bootstrap(email)
+        WS->>DB: CREATE organization (default)
+        WS->>DB: CREATE project (default)
+        WS->>DB: CREATE member (user → org, role: owner)
+        WS->>DB: CREATE API key (whpk_live_...)
+        WS-->>Worker: Workspace ready
+    end
+
+    Worker->>Worker: Sign JWT
+    Worker-->>User: {token, user}
+```
+
+### What Gets Created
+
+| Resource | Value | Notes |
+| :--- | :--- | :--- |
+| Organization | `{email}'s Organization` | Default org named after user email |
+| Project | `Default Project` | First project scoped to the org |
+| Member | `{email}` → Org | Role: `owner` |
+| API Key | `whpk_live_...` | SHA-256 hashed before storage |
 
 ---
 
@@ -33,18 +75,43 @@ graph TD
 
 When a client makes a REST request, the authentication middleware resolves the tenant context (`projectId`) dynamically on the edge:
 
+```mermaid
+flowchart TD
+    A["Incoming API Request"] --> B{"Authorization Header?"}
+    B -->|"Bearer whpk_live_..."| C["API Key Path"]
+    B -->|"Bearer eyJhbG..."| D["JWT Session Path"]
+
+    C --> E["Hash key with SHA-256"]
+    E --> F{"KV Cache Hit?"}
+    F -->|"Yes"| G["Extract projectId from cache"]
+    F -->|"No"| H["Query D1 api_keys table"]
+    H --> I["Cache result in KV"]
+    I --> G
+
+    D --> J["Verify JWT signature"]
+    J --> K["Extract userId from claims"]
+    K --> L["Read x-project-id header"]
+    L --> M["Validate membership in DB"]
+    M --> G
+
+    G --> N["Attach projectId to request context"]
+    N --> O["Route to handler"]
+```
+
 ### Path A: API Key Request (Publisher Services)
+
 1. The client sends a header: `Authorization: Bearer whpk_live_...`.
 2. The authentication middleware hashes the key using SHA-256.
-3. It queries the `api_keys` table for the matching hash.
+3. It queries the `api_keys` table for the matching hash (with KV cache).
 4. If found and active, the middleware extracts the associated `projectId` and attaches it to the request context: `request.projectId = apiKey.projectId`.
 
-### Path B: Session Token Request (Dashboard Users)
+### Path B: JWT Session Request (Dashboard Users)
+
 1. The browser sends a signed JWT token in the `Authorization` header.
 2. The middleware validates the JWT signature using `JWT_SECRET`.
-3. It extracts the `userId` and current active `projectId` from the token claims.
+3. It extracts the `userId` and reads the `x-project-id` header for the active project context.
 4. The middleware validates that the user is an active approved member of the organization associated with that project.
-5. The active `projectId` is attached to the request context: `request.projectId = token.projectId`.
+5. The active `projectId` is attached to the request context: `request.projectId`.
 
 ---
 
@@ -56,6 +123,7 @@ To prevent cross-tenant data access (broken object-level authorization), WebHook
 * The SQL query filters resources using an explicit `AND project_id = ?` constraint.
 
 ### Drizzle Query Isolation Example (`webhook.repository.ts`):
+
 ```typescript
 async findById(id: string, projectId: string) {
   const rows = await this.db
@@ -72,6 +140,18 @@ async findById(id: string, projectId: string) {
 ```
 
 Because the `projectId` is resolved during authentication at the edge and passed directly into the repository layer, it is impossible for a user or API key belonging to Project A to read, modify, or delete endpoints belonging to Project B.
+
+---
+
+## RBAC: Role-Based Access Control
+
+Organization members are assigned one of three roles:
+
+| Role | Permissions |
+| :--- | :--- |
+| `owner` | Full access: manage members, settings, billing, delete org |
+| `admin` | Manage webhooks, events, API keys; invite/remove members |
+| `member` | Read-only access to webhooks, events, deliveries, and metrics |
 
 ---
 

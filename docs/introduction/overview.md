@@ -19,6 +19,35 @@ WebHook Hub handles all of these concerns out-of-the-box, allowing SaaS engineer
 
 ---
 
+## Platform at a Glance
+
+```mermaid
+mindmap
+  root((WebHook Hub))
+    Ingestion
+      Edge-Native Workers
+      Sub-ms Response
+      Idempotency Keys
+    Security
+      Google OAuth SSO
+      HMAC-SHA256 Signing
+      SHA-256 API Key Hashing
+      Dynamic CORS
+      IP Rate Limiting
+    Delivery
+      Exponential Backoff
+      Poison Event Isolation
+      Circuit Breaker
+      Payload Transforms
+    Management
+      React Dashboard
+      Team & RBAC
+      Audit Logs
+      Live Metrics
+```
+
+---
+
 ## Core Value Proposition
 
 ### 1. Zero Infrastructure Management
@@ -27,12 +56,16 @@ Built on top of Cloudflare Workers, KV, and D1, the platform operates entirely w
 ### 2. High Cost Efficiency
 Running on Cloudflare's free tier, the platform achieves substantial scale (up to 100,000 requests per day) for free. Because there are no idle resource costs, scaling down to zero is native.
 
-### 3. Developer Portal & Portal Dashboard
+### 3. Passwordless Authentication
+WebHook Hub uses **Google OAuth** exclusively for dashboard authentication. No passwords are stored, transmitted, or brute-forced. New users are auto-provisioned with a complete workspace on first sign-in.
+
+### 4. Developer Portal & Dashboard
 The dashboard provides a complete workspace management interface:
 * Create and delete webhook endpoints.
 * View live metrics, request latency, and HTTP response statuses.
 * Access event logs and inspect transformed payloads.
-* Manage API Keys and approval queues.
+* Manage API Keys, team members, and role-based permissions.
+* Built-in API reference documentation.
 
 ---
 
@@ -42,6 +75,8 @@ The dashboard provides a complete workspace management interface:
 | :--- | :--- | :--- | :--- |
 | **Initial Setup Time** | Weeks/Months | Hours (via Terraform) | Minutes |
 | **Hosting Cost** | High (VPC + VMs) | Free / Nominal (Serverless) | High usage tiers |
+| **Authentication** | Custom Auth | Google OAuth SSO | Custom/OAuth |
 | **Payload Transforms** | Manual Code | Native UI Rules | Standard JSON mapper |
 | **Retry Delivery** | Custom DB Queues | Cloudflare `waitUntil` | Managed queues |
+| **Rate Limiting** | Custom Redis/Memcached | Built-in KV Counters | Managed |
 | **Data Control** | Internal | Fully Owned D1 Database | Hosted on vendor cloud |

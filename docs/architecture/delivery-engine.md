@@ -13,7 +13,7 @@ sequenceDiagram
     participant Publisher
     participant Ingress Worker
     participant D1 Database
-    participant KV Cache (Rate Limits)
+    participant KV as KV Cache
     participant Delivery Job
     participant Target Server
 
@@ -25,7 +25,7 @@ sequenceDiagram
     Delivery Job->>D1 Database: Select deliverable events (pending/retrying)
     
     loop For each event batch
-        Delivery Job->>KV Cache (Rate Limits): Check rate limits for endpoint
+        Delivery Job->>KV: Check rate limits for endpoint
         alt Rate Limited
             Delivery Job->>Delivery Job: Defer to next cycle
         else Within Limits

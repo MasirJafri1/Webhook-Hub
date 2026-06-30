@@ -1,20 +1,63 @@
 # Rate Limits & Throttling
 
-To prevent resource exhaustion, protect downstream API consumers, and stay within serverless execution bounds, WebHook Hub enforces rate limiting on both incoming (ingress) and outgoing (egress) pipelines.
+To prevent resource exhaustion, protect downstream API consumers, and stay within serverless execution bounds, WebHook Hub enforces multi-layered rate limiting on authentication, incoming (ingress), and outgoing (egress) pipelines.
 
 ---
 
-## 1. Ingress Rate Limiting (API Publishing)
+## Rate Limiting Overview
 
-Ingress rate limiting protects the platform's REST endpoints—specifically `POST /api/v1/events`—from being flooded by runaway scripts or malicious actors.
+```mermaid
+flowchart TD
+    A["Incoming Request"] --> B{"Health/Version?"}
+    B -->|"Yes"| C["✅ Skip All Rate Limits"]
+    B -->|"No"| D{"Auth Route?<br/>/auth/login or /auth/signup"}
 
-* **Default Limit**: Determined by Cloudflare Worker concurrency rules or standard Cloudflare WAF (Web Application Firewall) rate limiting rules.
-* **Mechanism**: If a publisher exceeds limits, the edge node returns a `429 Too Many Requests` HTTP response.
-* **Best Practice**: Clients should handle `429` errors by implementing exponential backoff retries when publishing events.
+    D -->|"Yes"| E{"Auth Rate Limit<br/>5 req/min per IP"}
+    E -->|"Exceeded"| F["429 Too Many Requests"]
+    E -->|"OK"| G["Global Rate Check"]
+
+    D -->|"No"| G
+
+    G -->|"60 req/min per IP"| H{"Exceeded?"}
+    H -->|"Yes"| F
+    H -->|"No"| I["✅ Process Request"]
+
+    subgraph "Egress (Background)"
+        J["Delivery Job"] --> K{"Endpoint Rate<br/>Limit Check (KV)"}
+        K -->|"Exceeded"| L["Defer to Next Cycle"]
+        K -->|"OK"| M["Deliver Webhook"]
+    end
+```
 
 ---
 
-## 2. Egress Rate Limiting (Target Webhook Protection)
+## 1. Authentication Rate Limiting (Brute-Force Protection)
+
+Dedicated rate limiting protects authentication endpoints from credential stuffing and brute-force attacks.
+
+| Limit | Key Pattern | Threshold | Window | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| Auth brute-force | `auth:{clientIP}` | 5 requests | 60 seconds | Prevents rapid login/signup attempts |
+| Signup throttle | `signup:{clientIP}` | 5 accounts | 3 hours (10800s) | Prevents mass account creation from a single IP |
+
+* **Scope**: Applied to `POST /api/v1/auth/login`, `POST /api/v1/auth/signup`, and `POST /api/v1/auth/google`.
+* **Mechanism**: If the IP exceeds the threshold, the API returns `429 Too Many Requests` with a descriptive error message.
+* **Implementation**: Uses KV-based counters with TTL-based expiration.
+
+---
+
+## 2. Global API Rate Limiting (Ingress)
+
+A general rate limit applies to **all API endpoints** (except `/health` and `/version`).
+
+* **Default Limit**: 60 requests per minute per IP address.
+* **Key Pattern**: `req:{clientIP}`
+* **Mechanism**: If a client exceeds the limit, the edge returns a `429 Too Many Requests` HTTP response.
+* **Best Practice**: Clients should handle `429` errors by implementing exponential backoff retries when interacting with the API.
+
+---
+
+## 3. Egress Rate Limiting (Target Webhook Protection)
 
 Egress rate limiting is a client-centric feature designed to prevent WebHook Hub from accidentally overloading your customer's backend servers during event spikes (e.g., flash sales, bulk imports, or migrations).
 
@@ -63,3 +106,14 @@ When the background job (`runDeliveryJob`) determines that an endpoint has reach
 4. On the next cron trigger (the next minute), once the KV key expires or is reset, the delivery engine automatically fetches the deferred events and attempts delivery again.
 
 This provides a **buffer queuing mechanism** where excessive events are automatically spread out over time rather than failing, guaranteeing message delivery without crashing target endpoints.
+
+---
+
+## Summary Table
+
+| Layer | Key Pattern | Limit | Window | Scope |
+| :--- | :--- | :--- | :--- | :--- |
+| Auth brute-force | `auth:{ip}` | 5 req | 60s | Per IP on auth routes |
+| Signup abuse | `signup:{ip}` | 5 accounts | 3 hours | Per IP on new registrations |
+| Global API | `req:{ip}` | 60 req | 60s | Per IP on all routes |
+| Egress throttle | `ratelimit:{endpointId}` | Configurable | 60s | Per target endpoint |

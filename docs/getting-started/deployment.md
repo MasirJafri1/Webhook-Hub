@@ -4,6 +4,34 @@ This guide details deploying WebHook Hub into a live Cloudflare production envir
 
 ---
 
+## Deployment Architecture
+
+```mermaid
+graph LR
+    subgraph "Source"
+        A["GitHub Repository"]
+    end
+
+    subgraph "CI/CD"
+        B["GitHub Actions<br/>deploy.yml"]
+    end
+
+    subgraph "Cloudflare Production"
+        C["Workers<br/>(API)"]
+        D["Pages<br/>(Dashboard)"]
+        E["D1<br/>(Database)"]
+        F["KV<br/>(Cache)"]
+        G["Secrets<br/>(JWT_SECRET, etc.)"]
+    end
+
+    A -->|"Push to main"| B
+    B -->|"wrangler deploy"| C
+    B -->|"wrangler pages deploy"| D
+    C --> E & F & G
+```
+
+---
+
 ## 1. Cloudflare Account Requirements
 Before launching, make sure you have:
 * A Cloudflare account.
@@ -37,31 +65,35 @@ npx wrangler d1 migrations apply webhook-platform-db --remote
 
 ### B. Inject Production Runtime Secrets
 Run these commands to bind secure parameters to the worker edge:
+
 ```bash
+# JWT signing secret (stored in Cloudflare Secrets, never in code)
+npx wrangler secret put JWT_SECRET
+# Value: <generate a secure random base64 string>
+
+# Google OAuth Client ID for token audience verification
+npx wrangler secret put GOOGLE_CLIENT_ID
+# Value: <your Google Cloud Console OAuth client ID>
+
 # Set environment to production (disables local test utilities)
 npx wrangler secret put ENVIRONMENT
 # Value: production
-
-# Add secure JWT token signing key
-npx wrangler secret put JWT_SECRET
-# Value: <generate secure random base64 string>
 ```
 
-### C. Seed Production Super Admin (Secure Bootstrapping)
-For security, WebHook Hub does not accept plaintext admin passwords in environment variables. You must generate the hashed credentials using the bootstrap script and insert them directly into your remote database:
+> **⚠️ Important**: The `JWT_SECRET` must be a high-entropy, cryptographically random string. Never commit it to source code or `wrangler.jsonc`. Use a generator like:
+> ```bash
+> node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+> ```
 
-> [!NOTE]
-> The admin bootstrapping script `create-admin.js` is committed to version control and reads `ADMIN_EMAIL` and `ADMIN_PASSWORD` from your `.env` file (or system environment variables) to keep your credentials secure.
+### C. Seed Production Super Admin
 
-1. Generate your admin password hash and database seeding command:
-   ```bash
-   # Option A: Reads from .env file or environment variables:
-   node scripts/create-admin.js --remote
+With Google OAuth, users are auto-provisioned on first sign-in. To promote a user to **Super Admin**:
 
-   # Option B: Pass credentials directly as arguments:
-   node scripts/create-admin.js --email=admin@yourdomain.com --password=YourSecurePassword123 --remote
-   ```
-2. The script will output a secure `wrangler d1 execute` query command. Copy and run that command in your terminal to bootstrap the Super Admin user, organization, default project, member, and default API keys.
+```bash
+# After the user has signed in at least once via Google OAuth:
+npx wrangler d1 execute webhook-platform-db --remote \
+  --command "UPDATE users SET role = 'super_admin' WHERE email = 'admin@yourdomain.com'"
+```
 
 ---
 
@@ -71,7 +103,7 @@ Run the deployment command:
 npx wrangler deploy
 ```
 
-### D. Deploy Vite Dashboard to Pages
+### E. Deploy Vite Dashboard to Pages
 Build the production build and upload it to Cloudflare Pages:
 ```bash
 cd ../dashboard
@@ -83,8 +115,46 @@ npx wrangler pages deploy dist --project-name=YOUR-PAGES-PROJECT-NAME
 
 ---
 
-## 4. Custom Domains (Recommended)
+## 4. Google OAuth Setup (Required)
+
+To enable Google Sign-In in production, you need a Google Cloud Console OAuth 2.0 Client ID:
+
+```mermaid
+flowchart TD
+    A["Google Cloud Console"] --> B["Create OAuth 2.0 Client ID"]
+    B --> C["Set Authorized Origins"]
+    C --> D["https://your-dashboard-domain.com"]
+    C --> E["http://localhost:5173 (dev)"]
+    B --> F["Copy Client ID"]
+    F --> G["Set GOOGLE_CLIENT_ID in<br/>Dashboard .env"]
+    F --> H["Set GOOGLE_CLIENT_ID via<br/>wrangler secret put"]
+```
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials**.
+2. Create an **OAuth 2.0 Client ID** (Web Application type).
+3. Add your dashboard URLs as **Authorized JavaScript origins**:
+   - `https://your-dashboard-domain.com` (production)
+   - `http://localhost:5173` (local development)
+4. Copy the **Client ID** and configure it:
+   - **Dashboard**: Set `VITE_GOOGLE_CLIENT_ID` in `.env.production`.
+   - **API Worker**: Run `npx wrangler secret put GOOGLE_CLIENT_ID`.
+
+---
+
+## 5. Custom Domains (Recommended)
 By default, your worker will be deployed to `<project>.<subdomain>.workers.dev`. For production usage, it is recommended to map your API to a custom subdomain (e.g., `api.webhookhub.com`).
 1. Go to your **Cloudflare Dashboard** ➡️ **Workers & Pages** ➡️ Select `webhook-platform-api`.
 2. Go to **Settings** ➡️ **Triggers** ➡️ **Custom Domains**.
 3. Click **Add Custom Domain** and enter your desired subdomain (e.g. `api.webhookhub.com`). Cloudflare will automatically provision the SSL certificates and configure DNS routing.
+
+---
+
+## 6. Production Security Checklist
+
+- [ ] `JWT_SECRET` set via `wrangler secret put` (not in source code)
+- [ ] `GOOGLE_CLIENT_ID` configured in both dashboard and worker
+- [ ] `ENVIRONMENT` set to `production` (disables test routes)
+- [ ] D1 migrations applied to remote database
+- [ ] CORS whitelist updated in `index.ts` with production dashboard URL
+- [ ] Super Admin promoted via D1 SQL after first Google OAuth sign-in
+- [ ] Custom domain configured with SSL

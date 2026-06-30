@@ -1,13 +1,14 @@
 # Developer Quickstart Guide
 
-This guide will walk you through launching a local instance of WebHook Hub, registering a webhook endpoint, ingesting an event, and verifying its delivery.
+This guide will walk you through launching a local instance of WebHook Hub, signing in via Google OAuth, registering a webhook endpoint, ingesting an event, and verifying its delivery.
 
 ---
 
 ## Prerequisites
 Ensure you have the following installed locally:
-* **Node.js** v24+
+* **Node.js** v18+
 * **Git**
+* **Wrangler CLI** (`npm install -g wrangler`)
 
 ---
 
@@ -55,26 +56,40 @@ npm run dev
 
 ---
 
-## 4. Bootstrap the Local Super Admin
-For security and flexibility, you must manually bootstrap your local Super Admin account.
+## 4. Sign In with Google OAuth
 
-You can configure credentials by defining `ADMIN_EMAIL` and `ADMIN_PASSWORD` in your `.env` file (or passing them as environment variables / command-line flags):
+WebHook Hub uses **passwordless Google OAuth** exclusively. No email/password setup required.
 
-1. Generate your credentials using the admin script:
-   ```bash
-   cd apps/api-worker
-   # Option A: Reads from .env file or environment variables:
-   node scripts/create-admin.js
+```mermaid
+flowchart LR
+    A["Open Dashboard<br/>localhost:5173"] --> B["Click 'Sign in with Google'"]
+    B --> C["Select Google Account"]
+    C --> D["Auto-Provisioned Workspace"]
+    D --> E["🎉 Ready to Use"]
+```
 
-   # Option B: Pass credentials directly as arguments:
-   node scripts/create-admin.js --email=admin@webhook.com --password=AdminSecurePassword123
-   ```
-2. The script will output a secure `npx wrangler d1 execute` query command. Copy and run that command in your terminal to seed the local SQLite database. Take note of the printed **API Key** (e.g. `whpk_live_...`).
-3. Open the dashboard locally at **[http://localhost:5173](http://localhost:5173)** and log in using the email and password you configured.
+1. Open the dashboard at **[http://localhost:5173](http://localhost:5173)**.
+2. Click **"Sign in with Google"** on the login page.
+3. Select your Google account and authorize.
+4. On first sign-in, the platform automatically creates:
+   - A default **Organization** (named after your email)
+   - A default **Project**
+   - A default **API Key** (`whpk_live_...`)
+5. You're now logged in and can access the full dashboard.
+
+> **Note**: To promote a user to Super Admin, update the `role` field in the `users` table directly via `wrangler d1 execute`.
 
 ---
 
-## 5. Register Your First Webhook Endpoint
+## 5. Get Your API Key
+
+1. Navigate to the **Settings** page in the dashboard.
+2. Your auto-generated API Key will be displayed. You can also **rotate** or **create new keys** from this page.
+3. Copy the API Key (e.g. `whpk_live_...`) — you'll need it to publish events.
+
+---
+
+## 6. Register Your First Webhook Endpoint
 1. Go to the **Webhooks** page in the dashboard.
 2. Click **Create Webhook**.
 3. Fill in:
@@ -84,8 +99,8 @@ You can configure credentials by defining `ADMIN_EMAIL` and `ADMIN_PASSWORD` in 
 
 ---
 
-## 6. Publish an Event
-Use `curl` in your terminal to ingest a test event using the publisher API Key printed in step 4:
+## 7. Publish an Event
+Use `curl` in your terminal to ingest a test event using the publisher API Key:
 
 ```bash
 curl -X POST http://localhost:8790/api/v1/events \
@@ -104,6 +119,15 @@ curl -X POST http://localhost:8790/api/v1/events \
 
 ---
 
-## 7. Verify Delivery
+## 8. Verify Delivery
 1. The API will instantly return a `201 Created` status code containing the event metadata.
 2. Check the **Deliveries** page in your dashboard or inspect your mock receiver URL. You will see the event delivered with standard `x-webhook-signature` headers validated and active!
+
+---
+
+## What's Next?
+
+* [Create Your First Webhook](../guides/create-first-webhook.md) — Detailed walkthrough
+* [Secret Rotation Guide](../guides/secret-rotation.md) — Zero-downtime secret rotations
+* [Filtering & Transformations](../guides/filtering-and-transformations.md) — Event filtering and payload transforms
+* [Deployment Manual](./deployment.md) — Deploy to Cloudflare production
