@@ -8,6 +8,9 @@ export interface Webhook {
   active: boolean;
   requestsPerMinute: number;
   createdAt: number;
+  eventFilters: string[] | null;
+  customHeaders: Record<string, string> | null;
+  version: "v1" | "v2" | null;
 }
 
 export interface WebhookMetrics {
@@ -97,4 +100,26 @@ export interface AuditLog {
   actor: string;
   projectId: string;
   createdAt: number;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  createdAt: number;
+}
+
+export interface Project {
+  id: string;
+  organizationId: string;
+  name: string;
+  monthlyEventLimit: number | null;
+  retentionDays: number | null;
+  createdAt: number;
+}
+
+export interface Member {
+  id: string;
+  organizationId: string | null;
+  email: string | null;
+  role: string | null;
 }

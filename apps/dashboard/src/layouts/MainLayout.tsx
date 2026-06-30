@@ -36,7 +36,6 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
 function SidebarContent({
   sidebarItems,
   location,
-  emailVal,
   initials,
   nameDisplay,
   roleDisplay,
@@ -44,7 +43,6 @@ function SidebarContent({
 }: {
   sidebarItems: SidebarItem[];
   location: ReturnType<typeof useLocation>;
-  emailVal: string;
   initials: string;
   nameDisplay: string;
   roleDisplay: string;
@@ -165,7 +163,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <SidebarContent
           sidebarItems={sidebarItems}
           location={location}
-          emailVal={emailVal}
           initials={initials}
           nameDisplay={nameDisplay}
           roleDisplay={roleDisplay}
@@ -183,7 +180,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <SidebarContent
               sidebarItems={sidebarItems}
               location={location}
-              emailVal={emailVal}
               initials={initials}
               nameDisplay={nameDisplay}
               roleDisplay={roleDisplay}

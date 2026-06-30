@@ -13,7 +13,18 @@ export function useWebhooks() {
     },
   });
 
-  const createMutation = useMutation<Webhook, Error, { name: string; url: string; requestsPerMinute?: number }>({
+  const createMutation = useMutation<
+    Webhook,
+    Error,
+    {
+      name: string;
+      url: string;
+      requestsPerMinute?: number;
+      eventFilters?: string[];
+      customHeaders?: Record<string, string>;
+      version?: "v1" | "v2";
+    }
+  >({
     mutationFn: async (payload) => {
       const result = await api.post<Webhook>("/webhooks", payload);
       return result.data;

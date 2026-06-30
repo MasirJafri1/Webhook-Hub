@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { useAuditLogs } from "../hooks/useAuditLogs";
 import { TableSkeleton } from "../components/Loader";
-import type { AuditLog } from "../types";
 
 type ActionFilter = "all" | string;
 
