@@ -51,16 +51,38 @@ export async function authenticate(request: any, env: Env) {
       .where(eq(members.email, decoded.email));
 
     if (memberRows.length > 0) {
-      const orgId = memberRows[0].organizationId;
-      if (orgId) {
+      const targetProjId = request.headers.get("x-project-id");
+      let selectedOrgId = memberRows[0].organizationId;
+      let selectedProjId: string | null = null;
+
+      if (targetProjId) {
+        // Verify the user has access to this project
         const projectRows = await db
           .select()
           .from(projects)
-          .where(eq(projects.organizationId, orgId));
-
+          .where(eq(projects.id, targetProjId));
         if (projectRows.length > 0) {
-          request.projectId = projectRows[0].id;
+          const projectOrgId = projectRows[0].organizationId;
+          const isMember = memberRows.some((m) => m.organizationId === projectOrgId);
+          if (isMember) {
+            selectedOrgId = projectOrgId;
+            selectedProjId = projectRows[0].id;
+          }
         }
+      }
+
+      if (!selectedProjId && selectedOrgId) {
+        const projectRows = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.organizationId, selectedOrgId));
+        if (projectRows.length > 0) {
+          selectedProjId = projectRows[0].id;
+        }
+      }
+
+      if (selectedProjId) {
+        request.projectId = selectedProjId;
       }
     }
   }

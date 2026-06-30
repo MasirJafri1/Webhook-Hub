@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Plus, Webhook as WebhookIcon } from "lucide-react";
 import { useWebhooks } from "../hooks/useWebhooks";
+import { useAuthMe } from "../hooks/useAuthMe";
 import WebhookTable from "../components/WebhookTable";
 import WebhookDetailDrawer from "../components/WebhookDetailDrawer";
 import SecretRevealModal from "../components/SecretRevealModal";
@@ -8,6 +9,7 @@ import { TableSkeleton } from "../components/Loader";
 
 export default function WebhooksPage() {
   const { data: webhooks, isLoading, createWebhook, deleteWebhook, rotateSecret } = useWebhooks();
+  const { isAdmin } = useAuthMe();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [rpm, setRpm] = useState("60");
@@ -81,7 +83,8 @@ export default function WebhooksPage() {
           <WebhookIcon size={18} className="text-indigo-400" />
           <span>Register New Webhook Endpoint</span>
         </h3>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        {isAdmin ? (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Row 1: Core Fields */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="flex flex-col gap-1.5">
@@ -168,7 +171,12 @@ export default function WebhooksPage() {
             </button>
           </div>
         </form>
-        <p className="text-xs text-text-dim">
+        ) : (
+          <div className="flex flex-col items-center gap-1.5 py-4 border border-dashed border-zinc-850 rounded-xl bg-zinc-950/10 text-center">
+            <span className="text-zinc-500 text-xs font-semibold">🔒 You must be an administrator to register new webhook endpoints.</span>
+          </div>
+        )}
+        <p className="text-xs text-text-dim mt-2">
           Click any row in the table below to view details, per-endpoint metrics, and manage the signing secret.
         </p>
       </div>

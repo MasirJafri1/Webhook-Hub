@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useApiKeys } from "../hooks/useApiKeys";
 import { useWorkspace } from "../hooks/useWorkspace";
+import { useAuthMe } from "../hooks/useAuthMe";
 import { TableSkeleton } from "../components/Loader";
 
 function CopyableField({
@@ -167,6 +168,7 @@ function NewKeyModal({ onClose, onCreate }: NewKeyModalProps) {
 
 export default function SettingsPage() {
   const { apiKeys, isLoading, createApiKey, deleteApiKey, isDeleting } = useApiKeys();
+  const { isAdmin } = useAuthMe();
   const {
     orgs,
     isLoadingOrgs,
@@ -334,13 +336,19 @@ export default function SettingsPage() {
                 <Key size={15} className="text-indigo-400" />
                 API Keys
               </h3>
-              <button
-                onClick={() => setShowNewKeyModal(true)}
-                className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.98]"
-              >
-                <Plus size={14} />
-                Generate New Key
-              </button>
+              {isAdmin ? (
+                <button
+                  onClick={() => setShowNewKeyModal(true)}
+                  className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.98]"
+                >
+                  <Plus size={14} />
+                  Generate New Key
+                </button>
+              ) : (
+                <span className="text-[10px] text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg font-semibold uppercase tracking-wider">
+                  Admin Action Locked
+                </span>
+              )}
             </div>
 
             {isLoading ? (
@@ -375,14 +383,18 @@ export default function SettingsPage() {
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => handleDelete(key.id)}
-                            disabled={deletingId === key.id || isDeleting}
-                            className="border border-border-color p-2 rounded-lg text-text-muted hover:text-accent-error hover:bg-accent-error-glow hover:border-accent-error/30 transition-all cursor-pointer disabled:opacity-40"
-                            title="Revoke API key"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {isAdmin ? (
+                            <button
+                              onClick={() => handleDelete(key.id)}
+                              disabled={deletingId === key.id || isDeleting}
+                              className="border border-border-color p-2 rounded-lg text-text-muted hover:text-accent-error hover:bg-accent-error-glow hover:border-accent-error/30 transition-all cursor-pointer disabled:opacity-40"
+                              title="Revoke API key"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-text-dim uppercase tracking-wider font-semibold">Read-Only</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -441,27 +453,33 @@ export default function SettingsPage() {
                   ))}
                 </div>
               )}
-              <form onSubmit={handleCreateOrg} className="flex flex-col gap-2 border-t border-zinc-800 pt-3 mt-1">
-                <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Create Organization</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Organization Name"
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    className="flex-grow bg-zinc-950 border border-zinc-800 px-3 py-2 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 placeholder-zinc-700"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    disabled={isCreatingOrg}
-                    className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1 transition-all disabled:opacity-50"
-                  >
-                    <PlusCircle size={14} />
-                    <span>{isCreatingOrg ? "Creating..." : "Create"}</span>
-                  </button>
+              {isAdmin ? (
+                <form onSubmit={handleCreateOrg} className="flex flex-col gap-2 border-t border-zinc-800 pt-3 mt-1">
+                  <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Create Organization</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Organization Name"
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      className="flex-grow bg-zinc-950 border border-zinc-800 px-3 py-2 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 placeholder-zinc-700"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={isCreatingOrg}
+                      className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1 transition-all disabled:opacity-50"
+                    >
+                      <PlusCircle size={14} />
+                      <span>{isCreatingOrg ? "Creating..." : "Create"}</span>
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="text-[11px] text-text-dim border-t border-zinc-850/60 pt-3 mt-1 text-center font-medium bg-zinc-900/10 py-2.5 rounded-lg border border-dashed border-zinc-800">
+                  🔒 Ask an Admin to manage Organizations.
                 </div>
-              </form>
+              )}
             </div>
 
             {/* Projects Directory & Creation */}
@@ -490,38 +508,44 @@ export default function SettingsPage() {
                   })}
                 </div>
               )}
-              <form onSubmit={handleCreateProject} className="flex flex-col gap-2 border-t border-zinc-800 pt-3 mt-1">
-                <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Create New Project</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={selectedOrgIdForProj}
-                    onChange={(e) => setSelectedOrgIdForProj(e.target.value)}
-                    className="bg-zinc-950 border border-zinc-800 px-2 py-2 rounded-xl text-zinc-50 text-xs focus:outline-none"
-                    required
+              {isAdmin ? (
+                <form onSubmit={handleCreateProject} className="flex flex-col gap-2 border-t border-zinc-800 pt-3 mt-1">
+                  <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Create New Project</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={selectedOrgIdForProj}
+                      onChange={(e) => setSelectedOrgIdForProj(e.target.value)}
+                      className="bg-zinc-950 border border-zinc-800 px-2 py-2 rounded-xl text-zinc-50 text-xs focus:outline-none"
+                      required
+                    >
+                      <option value="" disabled>Select Org</option>
+                      {orgs.map((o) => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Project Name"
+                      value={projName}
+                      onChange={(e) => setProjName(e.target.value)}
+                      className="bg-zinc-950 border border-zinc-800 px-3 py-2 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 placeholder-zinc-700"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isCreatingProject || orgs.length === 0}
+                    className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 mt-1 transition-all disabled:opacity-50"
                   >
-                    <option value="" disabled>Select Org</option>
-                    {orgs.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="Project Name"
-                    value={projName}
-                    onChange={(e) => setProjName(e.target.value)}
-                    className="bg-zinc-950 border border-zinc-800 px-3 py-2 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 placeholder-zinc-700"
-                    required
-                  />
+                    <PlusCircle size={14} />
+                    <span>{isCreatingProject ? "Creating Project..." : "Create Project"}</span>
+                  </button>
+                </form>
+              ) : (
+                <div className="text-[11px] text-text-dim border-t border-zinc-850/60 pt-3 mt-1 text-center font-medium bg-zinc-900/10 py-2.5 rounded-lg border border-dashed border-zinc-800">
+                  🔒 Ask an Admin to manage Projects.
                 </div>
-                <button
-                  type="submit"
-                  disabled={isCreatingProject || orgs.length === 0}
-                  className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 mt-1 transition-all disabled:opacity-50"
-                >
-                  <PlusCircle size={14} />
-                  <span>{isCreatingProject ? "Creating Project..." : "Create Project"}</span>
-                </button>
-              </form>
+              )}
             </div>
           </div>
 
@@ -534,54 +558,60 @@ export default function SettingsPage() {
             <p className="text-xs text-text-dim -mt-1 leading-normal">
               Grant other developers access to read or administer webhooks and API metrics within your organization.
             </p>
-            <form onSubmit={handleAddMember} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end border-t border-zinc-800 pt-4 mt-1">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Target Organization</label>
-                <select
-                  value={selectedOrgIdForMember}
-                  onChange={(e) => setSelectedOrgIdForMember(e.target.value)}
-                  className="bg-zinc-950 border border-zinc-800 px-3 py-2.5 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 cursor-pointer"
-                  required
-                >
-                  <option value="" disabled>Select Org</option>
-                  {orgs.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Developer Email</label>
-                <input
-                  type="email"
-                  placeholder="collaborator@company.com"
-                  value={memberEmail}
-                  onChange={(e) => setMemberEmail(e.target.value)}
-                  className="bg-zinc-950 border border-zinc-800 px-4 py-2.5 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 placeholder-zinc-700"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2 items-end">
+            {isAdmin ? (
+              <form onSubmit={handleAddMember} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end border-t border-zinc-800 pt-4 mt-1">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Role</label>
+                  <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Target Organization</label>
                   <select
-                    value={memberRole}
-                    onChange={(e) => setMemberRole(e.target.value)}
-                    className="bg-zinc-950 border border-zinc-800 px-2 py-2.5 rounded-xl text-zinc-50 text-xs focus:outline-none cursor-pointer"
+                    value={selectedOrgIdForMember}
+                    onChange={(e) => setSelectedOrgIdForMember(e.target.value)}
+                    className="bg-zinc-950 border border-zinc-800 px-3 py-2.5 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 cursor-pointer"
+                    required
                   >
-                    <option value="user">Developer</option>
-                    <option value="admin">Admin</option>
+                    <option value="" disabled>Select Org</option>
+                    {orgs.map((o) => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
                   </select>
                 </div>
-                <button
-                  type="submit"
-                  disabled={isAddingMember || orgs.length === 0}
-                  className="bg-zinc-50 hover:bg-zinc-200 text-zinc-950 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-50"
-                >
-                  <UserPlus size={14} />
-                  <span>{isAddingMember ? "Adding..." : "Add"}</span>
-                </button>
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
+                  <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Developer Email</label>
+                  <input
+                    type="email"
+                    placeholder="collaborator@company.com"
+                    value={memberEmail}
+                    onChange={(e) => setMemberEmail(e.target.value)}
+                    className="bg-zinc-950 border border-zinc-800 px-4 py-2.5 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 placeholder-zinc-700"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2 items-end">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Role</label>
+                    <select
+                      value={memberRole}
+                      onChange={(e) => setMemberRole(e.target.value)}
+                      className="bg-zinc-950 border border-zinc-800 px-2 py-2.5 rounded-xl text-zinc-50 text-xs focus:outline-none cursor-pointer"
+                    >
+                      <option value="user">Developer</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isAddingMember || orgs.length === 0}
+                    className="bg-zinc-50 hover:bg-zinc-200 text-zinc-950 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-50"
+                  >
+                    <UserPlus size={14} />
+                    <span>{isAddingMember ? "Adding..." : "Add"}</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="text-xs text-text-dim border-t border-zinc-850/60 pt-4 mt-1 text-center font-semibold bg-zinc-900/10 py-3.5 rounded-xl border border-dashed border-zinc-800">
+                🔒 You must be an organization administrator to invite team members.
               </div>
-            </form>
+            )}
           </div>
 
         </div>

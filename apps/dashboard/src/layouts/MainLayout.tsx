@@ -15,6 +15,8 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { useWorkspace } from "../hooks/useWorkspace";
+import { useAuthMe } from "../hooks/useAuthMe";
 
 interface SidebarItem {
   name: string;
@@ -117,6 +119,7 @@ function SidebarContent({
             localStorage.removeItem("whpk_user_email");
             localStorage.removeItem("whpk_project_id");
             localStorage.removeItem("whpk_org_id");
+            localStorage.removeItem("whpk_member_role");
             window.location.reload();
           }}
           className="w-full text-left text-xs font-medium text-zinc-400 hover:text-red-400 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-500/5 transition-all border-none bg-transparent cursor-pointer"
@@ -132,10 +135,13 @@ function SidebarContent({
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const role = localStorage.getItem("whpk_user_role");
-  const emailVal = localStorage.getItem("whpk_user_email") || "developer@domain.com";
-  const isAdmin = role === "super_admin";
+  const { orgs, projects } = useWorkspace();
+  const { user, switchProject, activeRole } = useAuthMe();
+
+  const emailVal = user?.email || localStorage.getItem("whpk_user_email") || "developer@domain.com";
+  const isAdmin = localStorage.getItem("whpk_user_role") === "super_admin";
 
   const sidebarItems = [...SIDEBAR_ITEMS];
   if (isAdmin) {
@@ -144,10 +150,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   const namePart = emailVal.split("@")[0];
   const initials = namePart.substring(0, 2).toUpperCase() || "US";
-  const roleDisplay = isAdmin ? "Super Admin" : "Developer";
-  const nameDisplay = isAdmin
-    ? "Super Admin"
-    : namePart.charAt(0).toUpperCase() + namePart.slice(1);
+  const roleDisplay = isAdmin ? "Super Admin" : activeRole.charAt(0).toUpperCase() + activeRole.slice(1);
+  const nameDisplay = namePart.charAt(0).toUpperCase() + namePart.slice(1);
 
   const currentPage =
     sidebarItems.find((item) =>
@@ -155,6 +159,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         ? location.pathname === "/"
         : location.pathname.startsWith(item.path)
     )?.name || "Dashboard";
+
+  const activeProjName = user?.activeProject?.name || "Select Project";
+  const activeOrgName = orgs.find((o) => o.id === user?.activeOrgId)?.name || "Default Org";
 
   return (
     <div className="flex min-h-screen bg-zinc-950 text-zinc-50">
@@ -204,8 +211,64 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             </button>
             <h2 className="text-base font-bold text-zinc-50 font-display">{currentPage}</h2>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Placeholder for header actions */}
+          <div className="flex items-center gap-2 relative">
+            {/* Project Switcher Dropdown */}
+            {projects.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-850 hover:border-zinc-700/80 rounded-lg text-xs font-semibold text-zinc-200 cursor-pointer transition-all hover:bg-zinc-850/40"
+                >
+                  <span className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">{activeOrgName}</span>
+                  <span className="w-[1px] h-3 bg-zinc-800"></span>
+                  <span>{activeProjName}</span>
+                  <svg
+                    className={`w-3 h-3 text-zinc-400 transition-transform duration-200 ${
+                      dropdownOpen ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {dropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-64 bg-zinc-900/90 backdrop-blur-md border border-zinc-800 rounded-xl shadow-2xl z-50 p-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                      <div className="px-3 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800/40 mb-1">
+                        Switch Project Workspace
+                      </div>
+                      <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+                        {projects.map((proj) => {
+                          const projOrg = orgs.find((o) => o.id === proj.organizationId);
+                          const isActive = proj.id === user?.activeProjectId;
+                          return (
+                            <button
+                              key={proj.id}
+                              onClick={() => {
+                                switchProject(proj.id, proj.organizationId);
+                                setDropdownOpen(false);
+                              }}
+                              className={`flex flex-col items-start gap-0.5 w-full text-left px-3 py-2 rounded-lg text-xs transition-all border-none bg-transparent cursor-pointer ${
+                                isActive
+                                  ? "bg-indigo-600/15 border border-indigo-500/20 text-zinc-50 font-bold"
+                                  : "text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/40"
+                              }`}
+                            >
+                              <span className="font-semibold">{proj.name}</span>
+                              <span className="text-[10px] text-zinc-500">{projOrg?.name || "Organization"}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </header>
 

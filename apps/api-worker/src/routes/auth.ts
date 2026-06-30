@@ -1,12 +1,13 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../db/client";
-import { users } from "../db/schema";
+import { users, members, projects } from "../db/schema";
 import { hashPassword, verifyPassword, signJwt } from "../utils/crypto";
 import { json } from "../utils/response";
 import type { Env } from "../types/env";
 import { nanoid } from "nanoid";
 import { WorkspaceService } from "../services/workspace.service";
 import { RateLimitService } from "../services/rate-limit.service";
+import { authenticate } from "../middleware/auth";
 
 function validatePassword(password: string): string | null {
   if (password.length < 8) {
@@ -295,6 +296,60 @@ export const registerAuthRoutes = (router: any) => {
       });
     } catch (err: any) {
       console.error("Google auth error:", err);
+      return json({ error: "Internal server error" }, 500);
+    }
+  });
+
+  router.get("/api/v1/auth/me", authenticate, async (request: any, env: Env) => {
+    try {
+      const db = getDb(env);
+      const rows = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, request.user.userId));
+      const user = rows[0];
+      if (!user) {
+        return json({ error: "User not found" }, 404);
+      }
+
+      const memberRows = await db
+        .select()
+        .from(members)
+        .where(eq(members.email, user.email));
+
+      let activeProject: any = null;
+      let activeRole = "member";
+      let activeOrgId: string | null = null;
+
+      if (request.projectId) {
+        const projRows = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, request.projectId));
+        if (projRows.length > 0) {
+          activeProject = projRows[0];
+          activeOrgId = activeProject.organizationId;
+          const matchingMember = memberRows.find(
+            (m) => m.organizationId === activeOrgId
+          );
+          if (matchingMember) {
+            activeRole = matchingMember.role || "member";
+          }
+        }
+      }
+
+      return json({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        memberships: memberRows,
+        activeProjectId: request.projectId,
+        activeProject,
+        activeOrgId,
+        activeRole,
+      });
+    } catch (err: any) {
+      console.error("Auth me error:", err);
       return json({ error: "Internal server error" }, 500);
     }
   });

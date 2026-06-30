@@ -15,6 +15,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useWebhookDetail } from "../hooks/useWebhookDetail";
+import { useAuthMe } from "../hooks/useAuthMe";
 
 interface WebhookDetailDrawerProps {
   webhookId: string | null;
@@ -56,6 +57,7 @@ export default function WebhookDetailDrawer({
 }: WebhookDetailDrawerProps) {
   const { webhook, isLoadingDetail, metrics, isLoadingMetrics, signingInfo } =
     useWebhookDetail(webhookId);
+  const { isAdmin } = useAuthMe();
 
   const [isRotating, setIsRotating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -233,14 +235,18 @@ export default function WebhookDetailDrawer({
                   <code className="flex-grow font-mono text-xs text-text-dim">
                     {webhook.currentSecret.slice(0, 12)}{"•".repeat(16)}
                   </code>
-                  <button
-                    onClick={handleRotate}
-                    disabled={isRotating}
-                    className="shrink-0 flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg text-text-main cursor-pointer transition-all disabled:opacity-50"
-                  >
-                    <RefreshCw size={12} className={isRotating ? "animate-spin" : ""} />
-                    <span>{isRotating ? "Rotating…" : "Rotate"}</span>
-                  </button>
+                  {isAdmin ? (
+                    <button
+                      onClick={handleRotate}
+                      disabled={isRotating}
+                      className="shrink-0 flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg text-text-main cursor-pointer transition-all disabled:opacity-50"
+                    >
+                      <RefreshCw size={12} className={isRotating ? "animate-spin" : ""} />
+                      <span>{isRotating ? "Rotating…" : "Rotate"}</span>
+                    </button>
+                  ) : (
+                    <span className="text-[10px] text-text-dim uppercase tracking-wider font-semibold px-2">Read-Only</span>
+                  )}
                 </div>
                 {signingInfo && (
                   <div className="flex flex-col gap-1.5">
@@ -322,17 +328,19 @@ export default function WebhookDetailDrawer({
               </div>
 
               {/* Danger Zone */}
-              <div className="border border-accent-error/20 bg-accent-error-glow rounded-xl p-4 flex flex-col gap-3">
-                <p className="text-xs font-bold text-accent-error uppercase tracking-wider">Danger Zone</p>
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="flex items-center gap-2 text-sm font-semibold text-accent-error border border-accent-error/30 hover:bg-accent-error/10 px-4 py-2.5 rounded-lg cursor-pointer transition-all disabled:opacity-50"
-                >
-                  <Trash2 size={14} />
-                  <span>{isDeleting ? "Deleting…" : "Delete Endpoint"}</span>
-                </button>
-              </div>
+              {isAdmin && (
+                <div className="border border-accent-error/20 bg-accent-error-glow rounded-xl p-4 flex flex-col gap-3">
+                  <p className="text-xs font-bold text-accent-error uppercase tracking-wider">Danger Zone</p>
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="flex items-center gap-2 text-sm font-semibold text-accent-error border border-accent-error/30 hover:bg-accent-error/10 px-4 py-2.5 rounded-lg cursor-pointer transition-all disabled:opacity-50"
+                  >
+                    <Trash2 size={14} />
+                    <span>{isDeleting ? "Deleting…" : "Delete Endpoint"}</span>
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-text-muted text-sm">Webhook not found.</p>

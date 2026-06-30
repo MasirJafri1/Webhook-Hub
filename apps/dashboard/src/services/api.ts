@@ -9,6 +9,10 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  const projectId = localStorage.getItem("whpk_project_id");
+  if (projectId) {
+    config.headers["X-Project-Id"] = projectId;
+  }
   return config;
 });
 
