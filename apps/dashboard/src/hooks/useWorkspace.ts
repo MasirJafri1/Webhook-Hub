@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
 import type { Organization, Project, Member } from "../types";
 
-export function useWorkspace() {
+export function useWorkspace(orgIdForMembers?: string) {
   const queryClient = useQueryClient();
 
   const orgsQuery = useQuery<Organization[]>({
@@ -19,6 +19,16 @@ export function useWorkspace() {
       const result = await api.get<Project[]>("/projects");
       return result.data;
     },
+  });
+
+  const membersQuery = useQuery<any[]>({
+    queryKey: ["members", orgIdForMembers],
+    queryFn: async () => {
+      if (!orgIdForMembers) return [];
+      const result = await api.get<any[]>(`/members?organizationId=${orgIdForMembers}`);
+      return result.data;
+    },
+    enabled: !!orgIdForMembers,
   });
 
   const createOrgMutation = useMutation<Organization, Error, { name: string }>({
@@ -88,6 +98,30 @@ export function useWorkspace() {
     },
   });
 
+
+
+  const deleteOrgMutation = useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      await api.delete(`/orgs/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["auth-me"] });
+    },
+  });
+
+  const deleteMemberMutation = useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      await api.delete(`/members/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["auth-me"] });
+    },
+  });
+
   return {
     orgs: orgsQuery.data ?? [],
     isLoadingOrgs: orgsQuery.isLoading,
@@ -105,5 +139,11 @@ export function useWorkspace() {
     isAcceptingInvitation: acceptInvitationMutation.isPending,
     declineInvitation: declineInvitationMutation.mutateAsync,
     isDecliningInvitation: declineInvitationMutation.isPending,
+    members: membersQuery.data ?? [],
+    isLoadingMembers: membersQuery.isLoading,
+    deleteOrg: deleteOrgMutation.mutateAsync,
+    isDeletingOrg: deleteOrgMutation.isPending,
+    deleteMember: deleteMemberMutation.mutateAsync,
+    isDeletingMember: deleteMemberMutation.isPending,
   };
 }

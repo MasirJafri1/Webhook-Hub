@@ -7,8 +7,11 @@ import {
   members,
   auditLogs,
   users,
+  webhookEndpoints,
+  events,
+  deliveries,
 } from "../db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { generateApiKey } from "../utils/api-key";
 import { sha256 } from "../utils/hash";
@@ -125,6 +128,41 @@ export const registerMultitenancyRoutes = (router: any) => {
         )
       );
     return json(rows);
+  });
+
+  router.get("/api/v1/members", authenticate, async (request: any, env: Env) => {
+    try {
+      const db = getDb(env);
+      const url = new URL(request.url);
+      const orgId = url.searchParams.get("organizationId");
+      if (!orgId) {
+        return json({ error: "organizationId is required" }, 400);
+      }
+
+      // Verify requester has access to organization
+      const membership = await db
+        .select()
+        .from(members)
+        .where(
+          and(
+            eq(members.organizationId, orgId),
+            eq(members.email, request.user.email)
+          )
+        );
+      if (membership.length === 0) {
+        return json({ error: "Forbidden: You are not a member of this organization" }, 403);
+      }
+
+      const rows = await db
+        .select()
+        .from(members)
+        .where(eq(members.organizationId, orgId));
+
+      return json(rows);
+    } catch (err: any) {
+      console.error("Error fetching members:", err);
+      return json({ error: "Internal server error" }, 500);
+    }
   });
 
   // Members
@@ -366,6 +404,133 @@ export const registerMultitenancyRoutes = (router: any) => {
       return json({ success: true });
     } catch (err: any) {
       console.error("Error declining invitation:", err);
+      return json({ error: "Internal server error" }, 500);
+    }
+  });
+
+  router.delete("/api/v1/orgs/:id", authenticate, async (request: any, env: Env) => {
+    try {
+      const db = getDb(env);
+      const id = request.params.id;
+
+      // Verify the requester is an admin in this organization
+      const requesterMembership = await db
+        .select()
+        .from(members)
+        .where(
+          and(
+            eq(members.organizationId, id),
+            eq(members.email, request.user.email),
+            eq(members.role, "admin")
+          )
+        );
+      if (requesterMembership.length === 0) {
+        return json({ error: "Forbidden: Only organization admins can delete the organization" }, 403);
+      }
+
+      // Fetch projects
+      const orgProjects = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.organizationId, id));
+      const projectIds = orgProjects.map((p) => p.id);
+
+      if (projectIds.length > 0) {
+        for (const projId of projectIds) {
+          // Delete related records
+          await db.delete(apiKeys).where(eq(apiKeys.projectId, projId));
+          
+          // Delete deliveries related to events under this project
+          const projectEvents = await db
+            .select()
+            .from(events)
+            .where(eq(events.projectId, projId));
+          const eventIds = projectEvents.map((e) => e.id);
+          
+          if (eventIds.length > 0) {
+            for (const evId of eventIds) {
+              await db.delete(deliveries).where(eq(deliveries.eventId, evId));
+            }
+            await db.delete(events).where(eq(events.projectId, projId));
+          }
+
+          await db.delete(webhookEndpoints).where(eq(webhookEndpoints.projectId, projId));
+          await db.delete(auditLogs).where(eq(auditLogs.projectId, projId));
+        }
+        await db.delete(projects).where(eq(projects.organizationId, id));
+      }
+
+      // Delete all member relations
+      await db.delete(members).where(eq(members.organizationId, id));
+
+      // Delete the organization
+      await db.delete(organizations).where(eq(organizations.id, id));
+
+      return json({ success: true });
+    } catch (err: any) {
+      console.error("Error deleting organization:", err);
+      return json({ error: "Internal server error" }, 500);
+    }
+  });
+
+  router.delete("/api/v1/members/:id", authenticate, async (request: any, env: Env) => {
+    try {
+      const db = getDb(env);
+      const id = request.params.id;
+
+      // Find target member
+      const targetMemberRows = await db
+        .select()
+        .from(members)
+        .where(eq(members.id, id));
+      const targetMember = targetMemberRows[0];
+      if (!targetMember) {
+        return json({ error: "Member not found" }, 404);
+      }
+
+      const targetOrgId = targetMember.organizationId;
+      if (!targetOrgId) {
+        return json({ error: "Invalid organization state" }, 400);
+      }
+
+      // Verify the requester is an admin in target organization
+      const requesterMembership = await db
+        .select()
+        .from(members)
+        .where(
+          and(
+            eq(members.organizationId, targetOrgId),
+            eq(members.email, request.user.email),
+            eq(members.role, "admin")
+          )
+        );
+      if (requesterMembership.length === 0) {
+        return json({ error: "Forbidden: Only admins can remove organization members" }, 403);
+      }
+
+      // If deleting themselves, ensure they are not the last admin
+      if (targetMember.email === request.user.email) {
+        const otherAdmins = await db
+          .select()
+          .from(members)
+          .where(
+            and(
+              eq(members.organizationId, targetOrgId),
+              eq(members.role, "admin"),
+              eq(members.status, "accepted"),
+              ne(members.email, request.user.email)
+            )
+          );
+        if (otherAdmins.length === 0) {
+          return json({ error: "Forbidden: You are the last admin in this organization. You cannot leave without assigning another admin first." }, 403);
+        }
+      }
+
+      await db.delete(members).where(eq(members.id, id));
+
+      return json({ success: true });
+    } catch (err: any) {
+      console.error("Error removing member:", err);
       return json({ error: "Internal server error" }, 500);
     }
   });

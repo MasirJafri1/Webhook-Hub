@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Settings,
   Key,
@@ -169,6 +169,13 @@ function NewKeyModal({ onClose, onCreate }: NewKeyModalProps) {
 export default function SettingsPage() {
   const { apiKeys, isLoading, createApiKey, deleteApiKey, isDeleting } = useApiKeys();
   const { isAdmin } = useAuthMe();
+  // Form states for Member
+  const [memberEmail, setMemberEmail] = useState("");
+  const [memberRole, setMemberRole] = useState("user");
+  const [selectedOrgIdForMember, setSelectedOrgIdForMember] = useState(
+    localStorage.getItem("whpk_org_id") || ""
+  );
+
   const {
     orgs,
     isLoadingOrgs,
@@ -180,11 +187,22 @@ export default function SettingsPage() {
     isCreatingProject,
     addMember,
     isAddingMember,
-  } = useWorkspace();
+    members,
+    isLoadingMembers,
+    deleteOrg,
+    isDeletingOrg,
+    deleteMember,
+    isDeletingMember,
+  } = useWorkspace(selectedOrgIdForMember);
 
   const [activeTab, setActiveTab] = useState<"credentials" | "workspace">("credentials");
   const [showNewKeyModal, setShowNewKeyModal] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Form toggles
+  const [showCreateOrg, setShowCreateOrg] = useState(false);
+  const [showCreateProj, setShowCreateProj] = useState(false);
+  const [showInviteMember, setShowInviteMember] = useState(false);
 
   // Form states for Organization
   const [orgName, setOrgName] = useState("");
@@ -192,11 +210,6 @@ export default function SettingsPage() {
   // Form states for Project
   const [projName, setProjName] = useState("");
   const [selectedOrgIdForProj, setSelectedOrgIdForProj] = useState("");
-
-  // Form states for Member
-  const [memberEmail, setMemberEmail] = useState("");
-  const [memberRole, setMemberRole] = useState("user");
-  const [selectedOrgIdForMember, setSelectedOrgIdForMember] = useState("");
 
   const projectId = localStorage.getItem("whpk_project_id") ?? "—";
   const orgId = localStorage.getItem("whpk_org_id") ?? "—";
@@ -263,10 +276,12 @@ export default function SettingsPage() {
   };
 
   // Set default dropdown options once orgs load
-  if (orgs.length > 0) {
-    if (!selectedOrgIdForProj) setSelectedOrgIdForProj(orgs[0].id);
-    if (!selectedOrgIdForMember) setSelectedOrgIdForMember(orgs[0].id);
-  }
+  useEffect(() => {
+    if (orgs.length > 0) {
+      if (!selectedOrgIdForProj) setSelectedOrgIdForProj(orgs[0].id);
+      if (!selectedOrgIdForMember) setSelectedOrgIdForMember(orgs[0].id);
+    }
+  }, [orgs, selectedOrgIdForProj, selectedOrgIdForMember]);
 
   return (
     <div className="flex flex-col gap-8 max-w-3xl mx-auto">
@@ -435,26 +450,65 @@ export default function SettingsPage() {
           {/* Organizations Directory & Creation */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-4 p-6 glass-panel">
-              <h3 className="font-display font-bold text-text-main flex items-center gap-2 text-sm">
-                <Building2 size={15} className="text-indigo-400" />
-                Organizations Directory
-              </h3>
+              <div className="flex justify-between items-center">
+                <h3 className="font-display font-bold text-text-main flex items-center gap-2 text-sm">
+                  <Building2 size={15} className="text-indigo-400" />
+                  Organizations Directory
+                </h3>
+                {isAdmin && (
+                  <button
+                    onClick={() => setShowCreateOrg(!showCreateOrg)}
+                    className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-850 px-2.5 py-1 rounded-lg text-[10px] font-bold text-zinc-300 transition-all cursor-pointer"
+                  >
+                    <Plus size={10} />
+                    <span>{showCreateOrg ? "Cancel" : "New Org"}</span>
+                  </button>
+                )}
+              </div>
               {isLoadingOrgs ? (
                 <TableSkeleton cols={1} rows={3} />
               ) : orgs.length === 0 ? (
-                <p className="text-xs text-text-dim">No organizations configured. Create one below.</p>
+                <p className="text-xs text-text-dim">No organizations configured.</p>
               ) : (
                 <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-1">
                   {orgs.map((o) => (
-                    <div key={o.id} className="flex justify-between items-center text-xs p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg">
+                    <div key={o.id} className="flex justify-between items-center text-xs p-2.5 bg-zinc-950 border border-zinc-800/80 rounded-lg">
                       <span className="font-semibold text-text-main">{o.name}</span>
-                      <code className="text-text-dim text-[10px] font-mono bg-zinc-900 px-1.5 py-0.5 rounded">{o.id}</code>
+                      <div className="flex items-center gap-2">
+                        <code className="text-text-dim text-[10px] font-mono bg-zinc-900 px-1.5 py-0.5 rounded">{o.id}</code>
+                        {isAdmin && (
+                          <button
+                            onClick={async () => {
+                              if (window.confirm("WARNING: Deleting this organization will permanently delete all of its projects, webhooks, API keys, and event logs. This action CANNOT be undone.\n\nAre you sure you want to delete organization: " + o.name + "?")) {
+                                try {
+                                  await deleteOrg(o.id);
+                                  alert(`Organization ${o.name} deleted successfully.`);
+                                  const activeOrg = localStorage.getItem("whpk_org_id");
+                                  if (activeOrg === o.id) {
+                                    localStorage.removeItem("whpk_org_id");
+                                    localStorage.removeItem("whpk_project_id");
+                                    window.location.reload();
+                                  }
+                                } catch (err) {
+                                  console.error(err);
+                                  alert("Failed to delete organization.");
+                                }
+                              }
+                            }}
+                            disabled={isDeletingOrg}
+                            className="p-1 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 text-zinc-500 hover:text-red-400 rounded transition-all cursor-pointer disabled:opacity-50"
+                            title="Delete Organization"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
-              {isAdmin ? (
-                <form onSubmit={handleCreateOrg} className="flex flex-col gap-2 border-t border-zinc-800 pt-3 mt-1">
+              {isAdmin && showCreateOrg && (
+                <form onSubmit={handleCreateOrg} className="flex flex-col gap-2 border-t border-zinc-800 pt-3 mt-1 animate-in slide-in-from-top-2 duration-150">
                   <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Create Organization</label>
                   <div className="flex gap-2">
                     <input
@@ -475,7 +529,8 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </form>
-              ) : (
+              )}
+              {!isAdmin && (
                 <div className="text-[11px] text-text-dim border-t border-zinc-850/60 pt-3 mt-1 text-center font-medium bg-zinc-900/10 py-2.5 rounded-lg border border-dashed border-zinc-800">
                   🔒 Ask an Admin to manage Organizations.
                 </div>
@@ -484,20 +539,31 @@ export default function SettingsPage() {
 
             {/* Projects Directory & Creation */}
             <div className="flex flex-col gap-4 p-6 glass-panel">
-              <h3 className="font-display font-bold text-text-main flex items-center gap-2 text-sm">
-                <FolderOpen size={15} className="text-indigo-400" />
-                Workspace Projects
-              </h3>
+              <div className="flex justify-between items-center">
+                <h3 className="font-display font-bold text-text-main flex items-center gap-2 text-sm">
+                  <FolderOpen size={15} className="text-indigo-400" />
+                  Workspace Projects
+                </h3>
+                {isAdmin && (
+                  <button
+                    onClick={() => setShowCreateProj(!showCreateProj)}
+                    className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-850 px-2.5 py-1 rounded-lg text-[10px] font-bold text-zinc-300 transition-all cursor-pointer"
+                  >
+                    <Plus size={10} />
+                    <span>{showCreateProj ? "Cancel" : "New Project"}</span>
+                  </button>
+                )}
+              </div>
               {isLoadingProjects ? (
                 <TableSkeleton cols={1} rows={3} />
               ) : projects.length === 0 ? (
-                <p className="text-xs text-text-dim">No workspace projects found. Create one below.</p>
+                <p className="text-xs text-text-dim">No workspace projects found.</p>
               ) : (
                 <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-1">
                   {projects.map((p) => {
                     const org = orgs.find((o) => o.id === p.organizationId);
                     return (
-                      <div key={p.id} className="flex justify-between items-center text-xs p-2.5 bg-zinc-950 border border-zinc-800 rounded-lg">
+                      <div key={p.id} className="flex justify-between items-center text-xs p-2.5 bg-zinc-950 border border-zinc-800/80 rounded-lg">
                         <div className="flex flex-col">
                           <span className="font-semibold text-text-main">{p.name}</span>
                           <span className="text-[9px] text-text-dim mt-0.5">Org: {org ? org.name : p.organizationId}</span>
@@ -508,14 +574,14 @@ export default function SettingsPage() {
                   })}
                 </div>
               )}
-              {isAdmin ? (
-                <form onSubmit={handleCreateProject} className="flex flex-col gap-2 border-t border-zinc-800 pt-3 mt-1">
+              {isAdmin && showCreateProj && (
+                <form onSubmit={handleCreateProject} className="flex flex-col gap-2 border-t border-zinc-800 pt-3 mt-1 animate-in slide-in-from-top-2 duration-150">
                   <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Create New Project</label>
                   <div className="grid grid-cols-2 gap-2">
                     <select
                       value={selectedOrgIdForProj}
                       onChange={(e) => setSelectedOrgIdForProj(e.target.value)}
-                      className="bg-zinc-950 border border-zinc-800 px-2 py-2 rounded-xl text-zinc-50 text-xs focus:outline-none"
+                      className="bg-zinc-950 border border-zinc-800 px-2 py-2 rounded-xl text-zinc-50 text-xs focus:outline-none cursor-pointer"
                       required
                     >
                       <option value="" disabled>Select Org</option>
@@ -538,10 +604,11 @@ export default function SettingsPage() {
                     className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 mt-1 transition-all disabled:opacity-50"
                   >
                     <PlusCircle size={14} />
-                    <span>{isCreatingProject ? "Creating Project..." : "Create Project"}</span>
+                    <span>{isCreatingProject ? "Creating..." : "Create Project"}</span>
                   </button>
                 </form>
-              ) : (
+              )}
+              {!isAdmin && (
                 <div className="text-[11px] text-text-dim border-t border-zinc-850/60 pt-3 mt-1 text-center font-medium bg-zinc-900/10 py-2.5 rounded-lg border border-dashed border-zinc-800">
                   🔒 Ask an Admin to manage Projects.
                 </div>
@@ -550,66 +617,153 @@ export default function SettingsPage() {
           </div>
 
           {/* Org Members Management */}
-          <div className="flex flex-col gap-4 p-6 glass-panel">
-            <h3 className="font-display font-bold text-text-main flex items-center gap-2 text-sm">
-              <Users size={15} className="text-indigo-400" />
-              Invite Team Members
-            </h3>
-            <p className="text-xs text-text-dim -mt-1 leading-normal">
-              Grant other developers access to read or administer webhooks and API metrics within your organization.
-            </p>
-            {isAdmin ? (
-              <form onSubmit={handleAddMember} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end border-t border-zinc-800 pt-4 mt-1">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Target Organization</label>
+          <div className="flex flex-col gap-5 p-6 glass-panel">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/60 pb-4">
+              <div className="flex items-center gap-3">
+                <Users size={16} className="text-indigo-400" />
+                <h3 className="font-display font-bold text-text-main text-sm">
+                  Team Members Directory
+                </h3>
+                {orgs.length > 0 && (
                   <select
                     value={selectedOrgIdForMember}
                     onChange={(e) => setSelectedOrgIdForMember(e.target.value)}
-                    className="bg-zinc-950 border border-zinc-800 px-3 py-2.5 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 cursor-pointer"
-                    required
+                    className="bg-zinc-950 border border-zinc-850 hover:border-zinc-700/80 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-200 cursor-pointer focus:outline-none"
                   >
-                    <option value="" disabled>Select Org</option>
                     {orgs.map((o) => (
                       <option key={o.id} value={o.id}>{o.name}</option>
                     ))}
                   </select>
-                </div>
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
+                )}
+              </div>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowInviteMember(!showInviteMember)}
+                  className="flex items-center gap-1.5 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 hover:border-indigo-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-400 cursor-pointer transition-all active:scale-[0.98]"
+                >
+                  <UserPlus size={13} />
+                  <span>{showInviteMember ? "Cancel" : "Invite Member"}</span>
+                </button>
+              )}
+            </div>
+
+            {isAdmin && showInviteMember && (
+              <form onSubmit={handleAddMember} className="flex flex-col sm:flex-row gap-3 items-end p-4 bg-zinc-950/40 border border-zinc-850 rounded-xl animate-in slide-in-from-top-2 duration-150">
+                <div className="flex flex-col gap-1.5 flex-grow">
                   <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Developer Email</label>
                   <input
                     type="email"
                     placeholder="collaborator@company.com"
                     value={memberEmail}
                     onChange={(e) => setMemberEmail(e.target.value)}
-                    className="bg-zinc-950 border border-zinc-800 px-4 py-2.5 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 placeholder-zinc-700"
+                    className="w-full bg-zinc-950 border border-zinc-800 px-4 py-2 rounded-xl text-zinc-50 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 placeholder-zinc-700"
                     required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2 items-end">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Role</label>
-                    <select
-                      value={memberRole}
-                      onChange={(e) => setMemberRole(e.target.value)}
-                      className="bg-zinc-950 border border-zinc-800 px-2 py-2.5 rounded-xl text-zinc-50 text-xs focus:outline-none cursor-pointer"
-                    >
-                      <option value="user">Developer</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={isAddingMember || orgs.length === 0}
-                    className="bg-zinc-50 hover:bg-zinc-200 text-zinc-950 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-50"
+                <div className="flex flex-col gap-1.5 w-32 shrink-0">
+                  <label className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Role</label>
+                  <select
+                    value={memberRole}
+                    onChange={(e) => setMemberRole(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 px-3 py-2 rounded-xl text-zinc-50 text-xs focus:outline-none cursor-pointer"
                   >
-                    <UserPlus size={14} />
-                    <span>{isAddingMember ? "Adding..." : "Add"}</span>
-                  </button>
+                    <option value="user">Developer</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </div>
+                <button
+                  type="submit"
+                  disabled={isAddingMember || orgs.length === 0}
+                  className="bg-zinc-50 hover:bg-zinc-200 text-zinc-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all disabled:opacity-50 shrink-0 h-[33px]"
+                >
+                  <UserPlus size={13} />
+                  <span>Send Invite</span>
+                </button>
               </form>
+            )}
+
+            {!isAdmin && (
+              <div className="text-xs text-text-dim text-center font-medium bg-zinc-900/10 py-2.5 rounded-lg border border-dashed border-zinc-800">
+                🔒 You must be an organization administrator to invite new team members.
+              </div>
+            )}
+
+            {/* Members Directory list */}
+            {isLoadingMembers ? (
+              <TableSkeleton cols={3} rows={2} />
+            ) : members.length === 0 ? (
+              <p className="text-xs text-text-dim py-2">No team members invited yet.</p>
             ) : (
-              <div className="text-xs text-text-dim border-t border-zinc-850/60 pt-4 mt-1 text-center font-semibold bg-zinc-900/10 py-3.5 rounded-xl border border-dashed border-zinc-800">
-                🔒 You must be an organization administrator to invite team members.
+              <div className="border border-zinc-800/80 rounded-xl overflow-hidden max-h-[220px] overflow-y-auto">
+                <table className="w-full border-collapse text-left text-xs text-zinc-300">
+                  <thead>
+                    <tr className="bg-zinc-950/80 border-b border-zinc-800 text-[10px] uppercase font-bold tracking-widest text-text-muted">
+                      <th className="py-2.5 px-4 font-mono">Email Address</th>
+                      <th className="py-2.5 px-4 font-mono">Organization Role</th>
+                      <th className="py-2.5 px-4 font-mono text-right">Invitation Status</th>
+                      {isAdmin && <th className="py-2.5 px-4 font-mono text-right w-12"></th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {members.map((mem) => {
+                      const isPending = mem.status === "pending";
+                      const isAdminRole = mem.role === "admin";
+                      return (
+                        <tr key={mem.id} className="border-b border-zinc-900/40 hover:bg-zinc-900/10">
+                          <td className="py-3 px-4 font-medium text-zinc-100">{mem.email}</td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                              isAdminRole 
+                                ? "bg-purple-500/10 text-purple-400 border-purple-500/20" 
+                                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                            }`}>
+                              {isAdminRole ? "Admin" : "Developer"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                              isPending
+                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse"
+                                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            }`}>
+                              {isPending ? "Pending" : "Joined"}
+                            </span>
+                          </td>
+                          {isAdmin && (
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                onClick={async () => {
+                                  const confirmMsg = mem.email === email 
+                                    ? "Are you sure you want to leave this organization?" 
+                                    : `Remove collaborator ${mem.email} from this organization?`;
+                                  if (window.confirm(confirmMsg)) {
+                                    try {
+                                      await deleteMember(mem.id);
+                                      alert("Collaborator removed successfully.");
+                                      if (mem.email === email) {
+                                        localStorage.removeItem("whpk_org_id");
+                                        localStorage.removeItem("whpk_project_id");
+                                        window.location.reload();
+                                      }
+                                    } catch (err: any) {
+                                      console.error(err);
+                                      alert("Failed to remove collaborator.");
+                                    }
+                                  }
+                                }}
+                                disabled={isDeletingMember}
+                                className="p-1 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 text-zinc-500 hover:text-red-400 rounded transition-all cursor-pointer disabled:opacity-50"
+                                title="Remove Collaborator"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
