@@ -132,7 +132,7 @@ export default function DashboardPage() {
             <span>Recent Events Stream</span>
           </h3>
           <Link
-            to="/events"
+            to="/dashboard/events"
             className="bg-zinc-800 hover:bg-zinc-700 text-zinc-50 px-3 py-1.5 rounded-md text-xs flex items-center gap-2 transition-all duration-150 border border-zinc-700 font-medium"
           >
             <span>View All</span>

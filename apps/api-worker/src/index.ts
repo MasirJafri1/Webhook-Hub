@@ -40,6 +40,19 @@ router.all("*", async (request: any, env: Env) => {
   const clientIp = request.headers.get("CF-Connecting-IP") || "local-ip";
   const rateLimitService = new RateLimitService(env.CACHE);
 
+  // Brute force protection for sensitive auth endpoints: 5 attempts per minute per IP
+  const isAuthRoute = url.pathname.startsWith("/api/v1/auth/login") || url.pathname.startsWith("/api/v1/auth/signup");
+  if (isAuthRoute) {
+    const isAuthLimited = await rateLimitService.isRateLimited(
+      `auth:${clientIp}`,
+      5,
+      60,
+    );
+    if (isAuthLimited) {
+      return json({ error: "Too many login/signup attempts. Please slow down and try again in a minute." }, 429);
+    }
+  }
+
   // General rate limit: 60 requests per minute per IP address
   const isLimited = await rateLimitService.isRateLimited(
     `req:${clientIp}`,
@@ -111,16 +124,52 @@ registerAuthRoutes(router);
 registerAdminRoutes(router);
 
 export default {
-  fetch: (request: Request, env: Env, ctx: ExecutionContext) => {
-    return router.fetch(request, env, ctx).catch((err: any) => {
+  fetch: async (request: Request, env: Env, ctx: ExecutionContext) => {
+    let response: Response;
+    try {
+      response = await router.fetch(request, env, ctx);
+    } catch (err: any) {
       console.error("Unhandled worker error:", err);
-      return new Response(JSON.stringify({ error: "Internal server error" }), {
+      response = new Response(JSON.stringify({ error: "Internal server error" }), {
         status: 500,
         headers: {
           "content-type": "application/json",
-          "access-control-allow-origin": "*",
         },
       });
+    }
+
+    // Secure dynamic CORS response formatting
+    const origin = request.headers.get("origin");
+    const url = new URL(request.url);
+    const newHeaders = new Headers(response.headers);
+
+    if (url.pathname === "/api/v1/events") {
+      // Keep wildcard for public event ingestion
+      newHeaders.set("access-control-allow-origin", "*");
+    } else {
+      // Restrict dashboard APIs to trusted domains
+      const allowedOrigins = [
+        "http://localhost:5173",
+        "https://webhook-platform.masir-projects.me",
+      ];
+      let allowedOrigin = "";
+      if (origin) {
+        const isAllowed = allowedOrigins.includes(origin) || origin.endsWith(".webhook-platform.pages.dev");
+        if (isAllowed) {
+          allowedOrigin = origin;
+        }
+      }
+      newHeaders.set("access-control-allow-origin", allowedOrigin || "https://webhook-platform.masir-projects.me");
+    }
+
+    newHeaders.set("access-control-allow-methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    newHeaders.set("access-control-allow-headers", "content-type, authorization, x-webhook-id, x-webhook-timestamp, x-webhook-signature, idempotency-key, x-project-id");
+    newHeaders.set("access-control-allow-credentials", "true");
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders,
     });
   },
   async scheduled(

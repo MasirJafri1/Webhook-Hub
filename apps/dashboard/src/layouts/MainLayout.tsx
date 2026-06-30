@@ -26,14 +26,14 @@ interface SidebarItem {
 }
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  { name: "Webhooks", path: "/webhooks", icon: Webhook },
-  { name: "Events", path: "/events", icon: Send },
-  { name: "Deliveries", path: "/deliveries", icon: Activity },
-  { name: "Dead Letters", path: "/dead", icon: AlertOctagon },
-  { name: "Metrics", path: "/metrics", icon: BarChart3 },
-  { name: "Audit Log", path: "/audit", icon: ClipboardList },
-  { name: "Settings", path: "/settings", icon: Settings },
+  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { name: "Webhooks", path: "/dashboard/webhooks", icon: Webhook },
+  { name: "Events", path: "/dashboard/events", icon: Send },
+  { name: "Deliveries", path: "/dashboard/deliveries", icon: Activity },
+  { name: "Dead Letters", path: "/dashboard/dead", icon: AlertOctagon },
+  { name: "Metrics", path: "/dashboard/metrics", icon: BarChart3 },
+  { name: "Audit Log", path: "/dashboard/audit", icon: ClipboardList },
+  { name: "Settings", path: "/dashboard/settings", icon: Settings },
 ];
 
 function SidebarContent({
@@ -55,12 +55,12 @@ function SidebarContent({
     <div className="flex flex-col h-full p-6">
       {/* Logo */}
       <div className="flex items-center justify-between gap-3 px-3 pb-6 border-b border-zinc-800/60 mb-6">
-        <div className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <Terminal className="w-5 h-5 text-indigo-400" />
           <span className="text-lg font-bold tracking-tight text-zinc-50 font-display">
             WebHook Hub
           </span>
-        </div>
+        </Link>
         {onClose && (
           <button
             onClick={onClose}
@@ -76,8 +76,8 @@ function SidebarContent({
         {sidebarItems.map((item) => {
           const Icon = item.icon;
           const isActive =
-            item.path === "/"
-              ? location.pathname === "/"
+            item.path === "/dashboard"
+              ? location.pathname === "/dashboard"
               : location.pathname.startsWith(item.path);
 
           return (
@@ -154,7 +154,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   const sidebarItems = [...SIDEBAR_ITEMS];
   if (isAdmin) {
-    sidebarItems.push({ name: "Admin Panel", path: "/admin", icon: ShieldCheck });
+    sidebarItems.push({ name: "Admin Panel", path: "/dashboard/admin", icon: ShieldCheck });
   }
 
   const namePart = emailVal.split("@")[0];
@@ -164,8 +164,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   const currentPage =
     sidebarItems.find((item) =>
-      item.path === "/"
-        ? location.pathname === "/"
+      item.path === "/dashboard"
+        ? location.pathname === "/dashboard"
         : location.pathname.startsWith(item.path)
     )?.name || "Dashboard";
 
@@ -220,7 +220,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             </button>
             <h2 className="text-base font-bold text-zinc-50 font-display">{currentPage}</h2>
           </div>
-          <div className="flex items-center gap-2 relative">
+          <div className="flex items-center gap-3.5 relative">
+            <a
+              href="https://webhook-platform-api.masirjafri1.workers.dev/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-zinc-400 hover:text-zinc-50 transition-colors bg-zinc-900 border border-zinc-850 hover:border-zinc-700/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5"
+            >
+              <span>API Reference</span>
+            </a>
             {/* Project Switcher Dropdown */}
             {projects.length > 0 && (
               <div className="relative">

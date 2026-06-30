@@ -12,6 +12,7 @@ import SignupPage from "./pages/SignupPage";
 import AdminPage from "./pages/AdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuditLogPage from "./pages/AuditLogPage";
+import LandingPage from "./pages/LandingPage";
 
 export default function App() {
   const [apiKey, setApiKey] = useState<string | null>(
@@ -22,10 +23,11 @@ export default function App() {
     setApiKey(key);
   };
 
-  // If not logged in, allow visiting /signup or /login, redirect others to /login
+  // If not logged in, allow visiting landing page, /signup or /login, redirect others to /
   if (!apiKey) {
     return (
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route
           path="/login"
           element={<LoginPage onLoginSuccess={handleLoginSuccess} />}
@@ -34,7 +36,7 @@ export default function App() {
           path="/signup"
           element={<SignupPage onSignupSuccess={handleLoginSuccess} />}
         />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
@@ -44,23 +46,35 @@ export default function App() {
   const isAdmin = role === "super_admin";
 
   return (
-    <MainLayout>
-      <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/webhooks" element={<WebhooksPage />} />
-        <Route path="/events" element={<EventsPage />} />
-        <Route path="/deliveries" element={<DeliveriesPage />} />
-        <Route path="/dead" element={<DeadLetterPage />} />
-        <Route path="/metrics" element={<MetricsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/audit" element={<AuditLogPage />} />
-        {isAdmin && <Route path="/admin" element={<AdminPage />} />}
+    <Routes>
+      {/* Root landing page is visible even when logged in */}
+      <Route path="/" element={<LandingPage />} />
 
-        {/* Redirect if hitting authenticated /login or /signup */}
-        <Route path="/login" element={<Navigate to="/" replace />} />
-        <Route path="/signup" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </MainLayout>
+      {/* Authenticated dashboard pages nested under /dashboard */}
+      <Route
+        path="/dashboard/*"
+        element={
+          <MainLayout>
+            <Routes>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="webhooks" element={<WebhooksPage />} />
+              <Route path="events" element={<EventsPage />} />
+              <Route path="deliveries" element={<DeliveriesPage />} />
+              <Route path="dead" element={<DeadLetterPage />} />
+              <Route path="metrics" element={<MetricsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="audit" element={<AuditLogPage />} />
+              {isAdmin && <Route path="admin" element={<AdminPage />} />}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </MainLayout>
+        }
+      />
+
+      {/* Redirect logged-in user if they hit login/signup */}
+      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/signup" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
