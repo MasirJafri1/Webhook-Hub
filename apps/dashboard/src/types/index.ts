@@ -10,6 +10,18 @@ export interface Webhook {
   createdAt: number;
 }
 
+export interface WebhookMetrics {
+  total: number;
+  successful: number;
+  failed: number;
+  avg_latency: number;
+}
+
+export interface WebhookSigningInfo {
+  algorithm: string;
+  headers: string[];
+}
+
 export interface Event {
   id: string;
   endpointId: string;
@@ -23,6 +35,7 @@ export interface Event {
   lastErrorHash: string | null;
   poisoned: boolean;
   createdAt: number;
+  projectId?: string;
 }
 
 export interface Delivery {
@@ -68,4 +81,20 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  projectId: string;
+  active: boolean;
+  createdAt: number;
+}
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  actor: string;
+  projectId: string;
+  createdAt: number;
 }

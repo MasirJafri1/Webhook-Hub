@@ -6,9 +6,10 @@ import type { Event } from "../types";
 interface EventTableProps {
   events: Event[];
   onReplay?: (id: string) => Promise<unknown>;
+  onRowClick?: (event: Event) => void;
 }
 
-export default function EventTable({ events, onReplay }: EventTableProps) {
+export default function EventTable({ events, onReplay, onRowClick }: EventTableProps) {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [replayingId, setReplayingId] = useState<string | null>(null);
   const [payloadVisibleId, setPayloadVisibleId] = useState<string | null>(null);
@@ -62,7 +63,10 @@ export default function EventTable({ events, onReplay }: EventTableProps) {
 
               return (
                 <React.Fragment key={event.id}>
-                  <tr className={`border-b border-border-color hover:bg-white/[0.02] transition-colors duration-200 ${isExpanded ? "bg-white/[0.01]" : ""}`}>
+                  <tr
+                    className={`border-b border-border-color hover:bg-white/[0.03] transition-colors duration-200 cursor-pointer ${isExpanded ? "bg-white/[0.01]" : ""}`}
+                    onClick={() => onRowClick?.(event)}
+                  >
                     <td className="px-6 py-4.5 align-middle">
                       <button
                         className="text-text-muted hover:text-text-main p-1 rounded cursor-pointer"

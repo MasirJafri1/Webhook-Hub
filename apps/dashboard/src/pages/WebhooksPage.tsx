@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Plus, Webhook as WebhookIcon } from "lucide-react";
 import { useWebhooks } from "../hooks/useWebhooks";
 import WebhookTable from "../components/WebhookTable";
+import WebhookDetailDrawer from "../components/WebhookDetailDrawer";
+import SecretRevealModal from "../components/SecretRevealModal";
 import { TableSkeleton } from "../components/Loader";
 
 export default function WebhooksPage() {
@@ -10,6 +12,10 @@ export default function WebhooksPage() {
   const [url, setUrl] = useState("");
   const [rpm, setRpm] = useState("60");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Drawer & modal state
+  const [selectedWebhookId, setSelectedWebhookId] = useState<string | null>(null);
+  const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +94,9 @@ export default function WebhooksPage() {
             <span>{isSubmitting ? "Adding..." : "Add Endpoint"}</span>
           </button>
         </form>
+        <p className="text-xs text-text-dim">
+          Click any row in the table below to view details, per-endpoint metrics, and manage the signing secret.
+        </p>
       </div>
 
       {/* Webhook Table Section */}
@@ -96,8 +105,32 @@ export default function WebhooksPage() {
           webhooks={webhooks || []}
           onDelete={deleteWebhook}
           onRotateSecret={rotateSecret}
+          onRowClick={(id) => setSelectedWebhookId(id)}
+          onSecretRevealed={(secret) => setRevealedSecret(secret)}
         />
       </div>
+
+      {/* Drawer */}
+      {selectedWebhookId && (
+        <WebhookDetailDrawer
+          webhookId={selectedWebhookId}
+          onClose={() => setSelectedWebhookId(null)}
+          onDelete={deleteWebhook}
+          onRotateSecret={rotateSecret}
+          onSecretRevealed={(secret) => {
+            setSelectedWebhookId(null);
+            setRevealedSecret(secret);
+          }}
+        />
+      )}
+
+      {/* Secret Reveal Modal */}
+      {revealedSecret && (
+        <SecretRevealModal
+          secret={revealedSecret}
+          onClose={() => setRevealedSecret(null)}
+        />
+      )}
     </div>
   );
 }

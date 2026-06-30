@@ -1,28 +1,36 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Trash2, RefreshCw, Key, ShieldAlert } from "lucide-react";
 import type { Webhook } from "../types";
 
 interface WebhookTableProps {
   webhooks: Webhook[];
   onDelete: (id: string) => Promise<unknown>;
-  onRotateSecret: (id: string) => Promise<unknown>;
+  onRotateSecret: (id: string) => Promise<{ secret: string }>;
+  onRowClick?: (id: string) => void;
+  onSecretRevealed?: (secret: string) => void;
 }
 
 export default function WebhookTable({
   webhooks,
   onDelete,
   onRotateSecret,
+  onRowClick,
+  onSecretRevealed,
 }: WebhookTableProps) {
   const [rotatingId, setRotatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleRotate = async (id: string) => {
+  const handleRotate = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!window.confirm("Are you sure you want to rotate the signing secret for this endpoint?")) {
       return;
     }
     try {
       setRotatingId(id);
-      await onRotateSecret(id);
+      const result = await onRotateSecret(id);
+      if (result?.secret && onSecretRevealed) {
+        onSecretRevealed(result.secret);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -30,7 +38,8 @@ export default function WebhookTable({
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this webhook endpoint?")) {
       return;
     }
@@ -67,7 +76,11 @@ export default function WebhookTable({
             </tr>
           ) : (
             webhooks.map((webhook) => (
-              <tr key={webhook.id} className="border-b border-border-color hover:bg-white/[0.02] transition-colors duration-200">
+              <tr
+                key={webhook.id}
+                onClick={() => onRowClick?.(webhook.id)}
+                className="border-b border-border-color hover:bg-white/[0.04] transition-colors duration-200 cursor-pointer"
+              >
                 <td className="px-6 py-4.5 font-medium align-middle">
                   <div className="text-sm font-semibold text-text-main">{webhook.name}</div>
                   <div className="text-xs text-text-dim mt-1">ID: {webhook.id}</div>
@@ -121,7 +134,7 @@ export default function WebhookTable({
                 <td className="px-6 py-4.5 align-middle text-right">
                   <div className="flex justify-end gap-2">
                     <button
-                      onClick={() => handleRotate(webhook.id)}
+                      onClick={(e) => handleRotate(webhook.id, e)}
                       disabled={rotatingId === webhook.id}
                       className="border border-border-color p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-bg-card-hover hover:border-border-color-glow transition-all duration-200 cursor-pointer disabled:opacity-50"
                       title="Rotate signing secret"
@@ -132,7 +145,7 @@ export default function WebhookTable({
                       />
                     </button>
                     <button
-                      onClick={() => handleDelete(webhook.id)}
+                      onClick={(e) => handleDelete(webhook.id, e)}
                       disabled={deletingId === webhook.id}
                       className="border border-border-color p-2 rounded-lg text-text-muted hover:text-accent-error hover:bg-accent-error-glow hover:border-accent-error/30 transition-all duration-200 cursor-pointer disabled:opacity-50"
                       title="Delete webhook endpoint"

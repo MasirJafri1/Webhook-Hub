@@ -53,6 +53,21 @@ export function useEvents(page = 1, limit = 20) {
     },
   });
 
+  const replayWindowMutation = useMutation<
+    { success: boolean },
+    Error,
+    { from: string; to: string }
+  >({
+    mutationFn: async ({ from, to }) => {
+      const result = await api.post<{ success: boolean }>("/events/replay-window", { from, to });
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["metrics"] });
+    },
+  });
+
   return {
     eventsData: eventsQuery.data,
     isLoadingEvents: eventsQuery.isLoading,
@@ -64,5 +79,7 @@ export function useEvents(page = 1, limit = 20) {
     isReplaying: replayMutation.isPending,
     replayAllEvents: replayAllMutation.mutateAsync,
     isReplayingAll: replayAllMutation.isPending,
+    replayWindow: replayWindowMutation.mutateAsync,
+    isReplayingWindow: replayWindowMutation.isPending,
   };
 }

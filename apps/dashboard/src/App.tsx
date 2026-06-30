@@ -10,6 +10,8 @@ import MetricsPage from "./pages/MetricsPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import AdminPage from "./pages/AdminPage";
+import SettingsPage from "./pages/SettingsPage";
+import AuditLogPage from "./pages/AuditLogPage";
 
 export default function App() {
   const [apiKey, setApiKey] = useState<string | null>(
@@ -50,6 +52,8 @@ export default function App() {
         <Route path="/deliveries" element={<DeliveriesPage />} />
         <Route path="/dead" element={<DeadLetterPage />} />
         <Route path="/metrics" element={<MetricsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/audit" element={<AuditLogPage />} />
         {isAdmin && <Route path="/admin" element={<AdminPage />} />}
 
         {/* Redirect if hitting authenticated /login or /signup */}
