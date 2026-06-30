@@ -5,7 +5,7 @@
 WebHook Hub provides developers and SaaS platforms with a highly scalable, reliable, and cost-effective event delivery pipeline — built entirely on Cloudflare's serverless stack with **zero cold starts** and **zero infrastructure management**.
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-webhook--platform.masir--projects.me-blue?style=for-the-badge)](https://webhook-platform.masir-projects.me)
-[![Docs](https://img.shields.io/badge/📖_Docs-API_Reference-green?style=for-the-badge)](https://webhook-platform-api.masir-projects.workers.dev/api/v1/docs)
+[![Docs](https://img.shields.io/badge/📖_Docs-API_Reference-green?style=for-the-badge)](https://webhook-platform-api.masirjafri1.workers.dev/docs)
 
 ---
 
