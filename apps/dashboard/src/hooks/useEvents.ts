@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
 import type { Event, PaginatedResponse } from "../types";
 
-export function useEvents(page = 1, limit = 20) {
+export function useEvents(page = 1, limit = 20, deadPage = 1, poisonedPage = 1) {
   const queryClient = useQueryClient();
 
   const eventsQuery = useQuery<PaginatedResponse<Event> | Event[]>({
@@ -15,18 +15,22 @@ export function useEvents(page = 1, limit = 20) {
     },
   });
 
-  const deadEventsQuery = useQuery<Event[]>({
-    queryKey: ["events", "dead"],
+  const deadEventsQuery = useQuery<PaginatedResponse<Event>>({
+    queryKey: ["events", "dead", deadPage, limit],
     queryFn: async () => {
-      const result = await api.get<Event[]>("/events/dead");
+      const result = await api.get<PaginatedResponse<Event>>("/events/dead", {
+        params: { page: deadPage, limit },
+      });
       return result.data;
     },
   });
 
-  const poisonedEventsQuery = useQuery<Event[]>({
-    queryKey: ["events", "poisoned"],
+  const poisonedEventsQuery = useQuery<PaginatedResponse<Event>>({
+    queryKey: ["events", "poisoned", poisonedPage, limit],
     queryFn: async () => {
-      const result = await api.get<Event[]>("/events/poisoned");
+      const result = await api.get<PaginatedResponse<Event>>("/events/poisoned", {
+        params: { page: poisonedPage, limit },
+      });
       return result.data;
     },
   });

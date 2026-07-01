@@ -22,6 +22,13 @@ export async function runDeliveryJob(env: any) {
 
   const service = new DeliveryService(deliveryRepo, eventRepo, webhookRepo, db);
 
+  // Auto-release any processing locks held by crashed worker instances (5-minute timeout)
+  try {
+    await eventRepo.releaseOrphanedLocks(300000);
+  } catch (e) {
+    console.error("Failed to release orphaned locks:", e);
+  }
+
   const events = await eventRepo.getDeliverableEvents();
 
   for (const batch of chunk(events, 20)) {

@@ -12,7 +12,7 @@ export class EventRepository {
   async acquireLock(id: string) {
     const result = await this.db
       .update(events)
-      .set({ status: "processing" })
+      .set({ status: "processing", lastAttemptAt: Date.now() })
       .where(
         and(
           eq(events.id, id),
@@ -21,6 +21,19 @@ export class EventRepository {
       );
     const changes = result.meta?.changes ?? result.changes ?? 0;
     return changes > 0;
+  }
+
+  async releaseOrphanedLocks(timeoutMs = 300000) {
+    const cutoff = Date.now() - timeoutMs;
+    return this.db
+      .update(events)
+      .set({ status: "pending" })
+      .where(
+        and(
+          eq(events.status, "processing"),
+          lte(events.lastAttemptAt, cutoff)
+        )
+      );
   }
 
 
@@ -36,7 +49,7 @@ export class EventRepository {
     return this.db.select().from(events).where(eq(events.projectId, projectId));
   }
 
-  async getDeliverableEvents(limit = 30) {
+  async getDeliverableEvents(limit = 50) {
     const now = Date.now();
     return this.db
       .select()
@@ -107,6 +120,33 @@ export class EventRepository {
 
     const countResult = await this.db.all(
       sql`SELECT COUNT(*) as count FROM events WHERE project_id = ${projectId}`,
+    );
+    const total = Number(countResult[0]?.count || 0);
+
+    return { data, total };
+  }
+
+  async findPaginatedByStatus(
+    page: number,
+    limit: number,
+    projectId: string,
+    status: string,
+  ) {
+    const offset = (page - 1) * limit;
+    const data = await this.db
+      .select()
+      .from(events)
+      .where(
+        and(
+          eq(events.projectId, projectId),
+          eq(events.status, status),
+        )
+      )
+      .limit(limit)
+      .offset(offset);
+
+    const countResult = await this.db.all(
+      sql`SELECT COUNT(*) as count FROM events WHERE project_id = ${projectId} AND status = ${status}`,
     );
     const total = Number(countResult[0]?.count || 0);
 

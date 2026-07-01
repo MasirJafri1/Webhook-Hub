@@ -7,6 +7,10 @@ import { TableSkeleton } from "../components/Loader";
 import type { Event } from "../types";
 
 export default function DeadLetterPage() {
+  const [deadPage, setDeadPage] = useState(1);
+  const [poisonedPage, setPoisonedPage] = useState(1);
+  const [limit] = useState(20);
+
   const {
     deadEvents,
     isLoadingDead,
@@ -17,7 +21,7 @@ export default function DeadLetterPage() {
     isReplayingAll,
     replayWindow,
     isReplayingWindow,
-  } = useEvents();
+  } = useEvents(1, limit, deadPage, poisonedPage);
 
   const [activeTab, setActiveTab] = useState<"dead" | "poisoned" | "window">("dead");
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -36,8 +40,29 @@ export default function DeadLetterPage() {
     );
   }
 
-  const deadList: Event[] = Array.isArray(deadEvents) ? deadEvents : [];
-  const poisonedList: Event[] = Array.isArray(poisonedEvents) ? poisonedEvents : [];
+  let deadList: Event[] = [];
+  let deadTotal = 0;
+  if (deadEvents) {
+    if (Array.isArray(deadEvents)) {
+      deadList = deadEvents;
+      deadTotal = deadEvents.length;
+    } else if ("data" in deadEvents && Array.isArray(deadEvents.data)) {
+      deadList = deadEvents.data;
+      deadTotal = deadEvents.total;
+    }
+  }
+
+  let poisonedList: Event[] = [];
+  let poisonedTotal = 0;
+  if (poisonedEvents) {
+    if (Array.isArray(poisonedEvents)) {
+      poisonedList = poisonedEvents;
+      poisonedTotal = poisonedEvents.length;
+    } else if ("data" in poisonedEvents && Array.isArray(poisonedEvents.data)) {
+      poisonedList = poisonedEvents.data;
+      poisonedTotal = poisonedEvents.total;
+    }
+  }
 
   const handleReplayAll = async () => {
     if (deadList.length === 0 && poisonedList.length === 0) return;
@@ -95,7 +120,7 @@ export default function DeadLetterPage() {
             }`}
           >
             <Skull size={16} className={activeTab === "dead" ? "text-accent-error" : "text-text-muted"} />
-            <span>Dead Events ({deadList.length})</span>
+            <span>Dead Events ({deadTotal})</span>
           </button>
           <button
             onClick={() => setActiveTab("poisoned")}
@@ -106,7 +131,7 @@ export default function DeadLetterPage() {
             }`}
           >
             <Bug size={16} className={activeTab === "poisoned" ? "text-accent-warning" : "text-text-muted"} />
-            <span>Poisoned Events ({poisonedList.length})</span>
+            <span>Poisoned Events ({poisonedTotal})</span>
           </button>
           <button
             onClick={() => setActiveTab("window")}
@@ -124,10 +149,60 @@ export default function DeadLetterPage() {
         {/* Tab Contents */}
         <div className="mt-4">
           {activeTab === "dead" && (
-            <EventTable events={deadList} onReplay={replayEvent} onRowClick={setSelectedEvent} />
+            <div className="flex flex-col gap-4">
+              <EventTable events={deadList} onReplay={replayEvent} onRowClick={setSelectedEvent} />
+              {Math.ceil(deadTotal / limit) > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-border-color/40 flex-wrap gap-3">
+                  <span className="text-xs text-text-muted">
+                    Showing page {deadPage} of {Math.ceil(deadTotal / limit)} (Total: {deadTotal} events)
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      disabled={deadPage === 1}
+                      onClick={() => setDeadPage((p) => Math.max(1, p - 1))}
+                      className="bg-bg-card border border-border-color text-text-main px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 hover:border-accent-primary hover:bg-bg-card-hover disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      disabled={deadPage >= Math.ceil(deadTotal / limit)}
+                      onClick={() => setDeadPage((p) => Math.min(Math.ceil(deadTotal / limit), p + 1))}
+                      className="bg-bg-card border border-border-color text-text-main px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 hover:border-accent-primary hover:bg-bg-card-hover disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           {activeTab === "poisoned" && (
-            <EventTable events={poisonedList} onReplay={replayEvent} onRowClick={setSelectedEvent} />
+            <div className="flex flex-col gap-4">
+              <EventTable events={poisonedList} onReplay={replayEvent} onRowClick={setSelectedEvent} />
+              {Math.ceil(poisonedTotal / limit) > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-border-color/40 flex-wrap gap-3">
+                  <span className="text-xs text-text-muted">
+                    Showing page {poisonedPage} of {Math.ceil(poisonedTotal / limit)} (Total: {poisonedTotal} events)
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      disabled={poisonedPage === 1}
+                      onClick={() => setPoisonedPage((p) => Math.max(1, p - 1))}
+                      className="bg-bg-card border border-border-color text-text-main px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 hover:border-accent-primary hover:bg-bg-card-hover disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      disabled={poisonedPage >= Math.ceil(poisonedTotal / limit)}
+                      onClick={() => setPoisonedPage((p) => Math.min(Math.ceil(poisonedTotal / limit), p + 1))}
+                      className="bg-bg-card border border-border-color text-text-main px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 hover:border-accent-primary hover:bg-bg-card-hover disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           {activeTab === "window" && (
             <div className="flex flex-col gap-5 max-w-lg">

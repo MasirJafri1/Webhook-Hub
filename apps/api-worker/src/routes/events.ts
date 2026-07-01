@@ -84,17 +84,25 @@ export const registerEventRoutes = (router: any) => {
     authenticate,
     async (request: any, env: Env) => {
       const db = getDb(env);
-      const rows = await db
-        .select()
-        .from(events)
-        .where(
-          and(
-            eq(events.status, "dead"),
-            eq(events.projectId, request.projectId),
-          ),
-        );
+      const repository = new EventRepository(db);
 
-      return json(rows);
+      const url = new URL(request.url);
+      const page = parseInt(url.searchParams.get("page") || "1", 10);
+      const limit = parseInt(url.searchParams.get("limit") || "20", 10);
+
+      const { data, total } = await repository.findPaginatedByStatus(
+        page,
+        limit,
+        request.projectId,
+        "dead",
+      );
+
+      return json({
+        data,
+        total,
+        page,
+        limit,
+      });
     },
   );
 
@@ -103,17 +111,25 @@ export const registerEventRoutes = (router: any) => {
     authenticate,
     async (request: any, env: Env) => {
       const db = getDb(env);
-      const rows = await db
-        .select()
-        .from(events)
-        .where(
-          and(
-            eq(events.status, "poisoned"),
-            eq(events.projectId, request.projectId),
-          ),
-        );
+      const repository = new EventRepository(db);
 
-      return json(rows);
+      const url = new URL(request.url);
+      const page = parseInt(url.searchParams.get("page") || "1", 10);
+      const limit = parseInt(url.searchParams.get("limit") || "20", 10);
+
+      const { data, total } = await repository.findPaginatedByStatus(
+        page,
+        limit,
+        request.projectId,
+        "poisoned",
+      );
+
+      return json({
+        data,
+        total,
+        page,
+        limit,
+      });
     },
   );
 
