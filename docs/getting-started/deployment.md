@@ -48,6 +48,7 @@ Add the following secrets under **Your Repo Settings ➡️ Secrets and variable
 * `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare Account ID.
 * `PRODUCTION_API_URL`: The deployed Worker API URL (e.g. `https://webhook-platform-api.<subdomain>.workers.dev/api/v1`).
 * `CLOUDFLARE_PAGES_PROJECT_NAME`: The name of the project in Cloudflare Pages for your dashboard.
+* `VITE_GOOGLE_CLIENT_ID`: The Google Client ID for Google Identity Services OAuth (used by the dashboard build process).
 
 Pushing changes to `main` branch will automatically trigger a clean build, compile, and deploy the entire stack to Cloudflare.
 
