@@ -36,7 +36,7 @@ export class EventRepository {
     return this.db.select().from(events).where(eq(events.projectId, projectId));
   }
 
-  async getDeliverableEvents() {
+  async getDeliverableEvents(limit = 30) {
     const now = Date.now();
     return this.db
       .select()
@@ -46,7 +46,8 @@ export class EventRepository {
           eq(events.status, "pending"),
           and(eq(events.status, "retrying"), lte(events.nextRetryAt, now)),
         ),
-      );
+      )
+      .limit(limit);
   }
 
   async markDelivered(id: string) {
