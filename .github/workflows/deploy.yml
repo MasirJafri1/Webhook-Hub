@@ -64,10 +64,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'apps/api-worker'
-          secrets: |
-            GOOGLE_CLIENT_ID
-        env:
-          GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
 
       - name: Install dashboard dependencies
         run: |
