@@ -1,4 +1,4 @@
-import { and, eq, lte, or, sql, gte } from "drizzle-orm";
+import { and, eq, lte, or, sql, gte, isNull } from "drizzle-orm";
 import { events } from "../db/schema";
 
 export class EventRepository {
@@ -31,7 +31,10 @@ export class EventRepository {
       .where(
         and(
           eq(events.status, "processing"),
-          lte(events.lastAttemptAt, cutoff)
+          or(
+            isNull(events.lastAttemptAt),
+            lte(events.lastAttemptAt, cutoff)
+          )
         )
       );
   }
