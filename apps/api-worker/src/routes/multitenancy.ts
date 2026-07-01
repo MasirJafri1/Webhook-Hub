@@ -11,7 +11,7 @@ import {
   events,
   deliveries,
 } from "../db/schema";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { generateApiKey } from "../utils/api-key";
 import { sha256 } from "../utils/hash";
@@ -310,18 +310,34 @@ export const registerMultitenancyRoutes = (router: any) => {
   });
 
   // Query Audit Logs
-  router.get("/api/v1/audit-logs", async (request: any, env: Env) => {
+  router.get("/api/v1/audit-logs", authenticate, async (request: any, env: Env) => {
     const db = getDb(env);
-    const url = new URL(request.url);
-    const projectId = url.searchParams.get("projectId");
+    const projectId = request.projectId;
 
-    const rows = projectId
-      ? await db
-          .select()
-          .from(auditLogs)
-          .where(eq(auditLogs.projectId, projectId))
-      : await db.select().from(auditLogs);
-    return json(rows);
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get("page") || "1", 10);
+    const limit = parseInt(url.searchParams.get("limit") || "20", 10);
+    const offset = (page - 1) * limit;
+
+    const rows = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.projectId, projectId))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const countResult = await db.all(
+      sql`SELECT COUNT(*) as count FROM audit_logs WHERE project_id = ${projectId}`,
+    );
+    const total = Number((countResult[0] as any)?.count || 0);
+
+    return json({
+      data: rows,
+      total,
+      page,
+      limit,
+    });
   });
 
   // Invitations management
