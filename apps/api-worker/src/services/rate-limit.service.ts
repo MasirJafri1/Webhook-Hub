@@ -10,17 +10,22 @@ export class RateLimitService {
       return false;
     }
 
-    const cacheKey = `ratelimit:${key}`;
-    const val = await this.cache.get(cacheKey);
-    const current = val ? parseInt(val, 10) : 0;
+    try {
+      const cacheKey = `ratelimit:${key}`;
+      const val = await this.cache.get(cacheKey);
+      const current = val ? parseInt(val, 10) : 0;
 
-    if (current >= limit) {
-      return true;
+      if (current >= limit) {
+        return true;
+      }
+
+      await this.cache.put(cacheKey, (current + 1).toString(), {
+        expirationTtl: windowSeconds,
+      });
+      return false;
+    } catch (err) {
+      console.warn("Rate limiting cache error, failing open:", err);
+      return false;
     }
-
-    await this.cache.put(cacheKey, (current + 1).toString(), {
-      expirationTtl: windowSeconds,
-    });
-    return false;
   }
 }
