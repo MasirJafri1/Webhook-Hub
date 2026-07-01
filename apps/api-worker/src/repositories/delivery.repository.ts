@@ -18,6 +18,26 @@ export class DeliveryRepository {
       );
   }
 
+  async findPaginated(page: number, limit: number, projectId: string) {
+    const offset = (page - 1) * limit;
+    const data = await this.db
+      .select()
+      .from(deliveries)
+      .where(
+        sql`event_id IN (SELECT id FROM events WHERE project_id = ${projectId})`,
+      )
+      .orderBy(sql`created_at DESC`)
+      .limit(limit)
+      .offset(offset);
+
+    const countResult = await this.db.all(
+      sql`SELECT COUNT(*) as count FROM deliveries WHERE event_id IN (SELECT id FROM events WHERE project_id = ${projectId})`,
+    );
+    const total = Number(countResult[0]?.count || 0);
+
+    return { data, total };
+  }
+
   async findByEventId(eventId: string, projectId: string) {
     return this.db
       .select()

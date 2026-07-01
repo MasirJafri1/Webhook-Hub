@@ -2,9 +2,12 @@ import React, { useState } from "react";
 import { Activity, Clock, Terminal, Eye, EyeOff } from "lucide-react";
 import { useDeliveries } from "../hooks/useDeliveries";
 import { TableSkeleton } from "../components/Loader";
+import type { Delivery } from "../types";
 
 export default function DeliveriesPage() {
-  const { deliveries, isLoadingDeliveries } = useDeliveries();
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const { deliveriesData, isLoadingDeliveries } = useDeliveries(page, limit);
   const [visibleBodyId, setVisibleBodyId] = useState<string | null>(null);
 
   if (isLoadingDeliveries) {
@@ -19,15 +22,44 @@ export default function DeliveriesPage() {
     );
   }
 
-  const deliveriesList = deliveries || [];
+  const isPaginated = deliveriesData && !Array.isArray(deliveriesData) && "data" in deliveriesData;
+
+  let deliveriesList: Delivery[] = [];
+  if (deliveriesData) {
+    if (Array.isArray(deliveriesData)) {
+      deliveriesList = deliveriesData;
+    } else if ("data" in deliveriesData && Array.isArray(deliveriesData.data)) {
+      deliveriesList = deliveriesData.data;
+    }
+  }
+
+  const total = isPaginated && typeof deliveriesData === "object" && "total" in deliveriesData ? deliveriesData.total : deliveriesList.length;
+  const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="flex flex-col gap-8">
       <div className="p-6 flex flex-col gap-5 glass-panel">
-        <h3 className="font-display text-xl text-text-main flex items-center gap-2.5 font-semibold">
-          <Activity size={18} />
-          <span>Webhook Delivery History Logs</span>
-        </h3>
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-2">
+          <h3 className="font-display text-xl text-text-main flex items-center gap-2.5 font-semibold">
+            <Activity size={18} />
+            <span>Webhook Delivery History Logs</span>
+          </h3>
+          <div className="flex flex-col gap-2 w-[140px]">
+            <select
+              value={limit}
+              onChange={(e) => {
+                setLimit(parseInt(e.target.value, 10));
+                setPage(1);
+              }}
+              className="bg-white/[0.03] border border-border-color px-3 py-2 rounded-lg text-text-main text-xs transition-all focus:outline-none focus:border-accent-primary"
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+            </select>
+          </div>
+        </div>
 
         {/* Desktop Table View */}
         <div className="hidden md:block w-full overflow-x-auto mb-6">
@@ -227,6 +259,30 @@ export default function DeliveriesPage() {
             })
           )}
         </div>
+
+        {isPaginated && totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t border-border-color/40 flex-wrap gap-3">
+            <span className="text-xs text-text-muted">
+              Showing page {page} of {totalPages} (Total: {total} deliveries)
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="bg-bg-card border border-border-color text-text-main px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 hover:border-accent-primary hover:bg-bg-card-hover disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="bg-bg-card border border-border-color text-text-main px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 hover:border-accent-primary hover:bg-bg-card-hover disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
