@@ -2,6 +2,9 @@
   "name": "webhook-platform-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-14",
+  "vars": {
+    "GOOGLE_CLIENT_ID": "523701258366-8te37ecj8b34bfsdf21r3l06n69stn4n.apps.googleusercontent.com"
+  },
   "d1_databases": [
     {
       "binding": "DB",
